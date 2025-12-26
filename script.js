@@ -939,9 +939,27 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // -------------------------------
-  // Buscar notas
-  // -------------------------------
-  searchInput.addEventListener('input', () => renderNotes(searchInput.value));
+// Buscar notas al pulsar botón
+// -------------------------------
+btnSearchNotes.addEventListener('click', () => {
+  const filter = searchInput.value.trim().toLowerCase();
+  const notes = getNotes();
+  const note = notes.find(n => n.title.toLowerCase() === filter); // Coincidencia exacta
+
+  if (note) {
+    // Mostrar la nota completa en el editor
+    noteTitle.value = note.title;
+    notesText.value = note.text;
+  } else {
+    alert('No se encontró ninguna nota con ese título');
+    noteTitle.value = '';
+    notesText.value = '';
+  }
+
+  // También actualizar la lista de notas filtradas (opcional)
+  renderNotes(filter);
+});
+
 
   // -------------------------------
   // Ver y borrar notas de la lista

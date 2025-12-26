@@ -372,8 +372,12 @@
   </header>
 
   <div class="card">
-    <!-- Buscador de notas -->
-    <input type="text" id="searchNotes" placeholder="Buscar notas..." style="width:100%;margin-bottom:10px;padding:5px;">
+  <!-- Buscador de notas -->
+<div style="display:flex; gap:5px; margin-bottom:10px;">
+  <input type="text" id="searchNotes" placeholder="Buscar notas por título..." style="flex:1; padding:5px;">
+  <button id="btnSearchNotes">Buscar</button>
+</div>
+
 
     <!-- Editor de nota -->
     <input type="text" id="noteTitle" placeholder="Título de la nota" style="width:100%;margin-bottom:5px;padding:5px;">
