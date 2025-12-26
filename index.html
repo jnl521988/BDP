@@ -58,7 +58,7 @@
 
     <div class="actions">
       <button id="calcMix">Calcular Mezcla</button>
-      <button id="exportMixCSV">Exportar CSV</button>
+      <button id="exportMixExcel">Exportar Excel</button>
       <button id="exportMixPDF">Exportar PDF</button>
       <button id="saveMix" class="small">Guardar</button>
     </div>
@@ -87,9 +87,9 @@
         <tr>
           <th><input id="selectAllMov" type="checkbox" title="Seleccionar todo"></th>
           <th>Nº</th>
-          <th>Depósito<br>Origen</th>
-          <th>Depósito<br>Destino</th>
-          <th>Litros</th>
+          <th>Origen</th>
+          <th>Destino</th>
+          <th>Movimientos<br>(L<span style="text-transform:lowercase;">itros</span>)</th>
           <th>Fecha</th>
           <th>Observaciones</th>
           <th>Estado</th>
@@ -100,7 +100,7 @@
     </table>
 
     <div class="actions">
-      <button id="exportMovCSV">Exportar CSV</button>
+      <button id="exportMovExcel">Exportar Excel</button>
       <button id="exportMovPDF">Exportar PDF</button>
       <button id="saveMov" class="small">Guardar</button>
     </div>
@@ -119,7 +119,7 @@
   <div class="card">
     <div class="controls" style="display:flex;justify-content:space-between;align-items:center;">
       <div>
-        <button id="exportBodegaCSV">Exportar CSV</button>
+        <button id="exportBodegaExcel">Exportar Excel</button>
         <button id="exportBodegaPDF">Exportar PDF</button>
         <button id="saveBodega" class="small">Guardar</button>
       </div>
@@ -207,7 +207,7 @@
     </table>
 
     <div class="actions">
-      <button id="exportBarrCSV">Exportar CSV</button>
+      <button id="exportBarrExcel">Exportar Excel</button>
       <button id="exportBarrPDF">Exportar PDF</button>
       <button id="saveBarr" class="small">Guardar</button>
     </div>
@@ -286,7 +286,7 @@
 
     <div class="actions">
       <button id="calcSO2">Calcular Sulfuroso</button>
-      <button id="exportSO2CSV">Exportar CSV</button>
+      <button id="exportSO2Excel">Exportar Excel</button>
       <button id="exportSO2PDF">Exportar PDF</button>
       <button id="saveSO2" class="small">Guardar</button>
     </div>
@@ -323,7 +323,7 @@
     </table>
 
     <div class="actions">
-      <button id="exportProdCSV">Exportar CSV</button>
+      <button id="exportProdExcel">Exportar Excel</button>
       <button id="exportProdPDF">Exportar PDF</button>
       <button id="saveProd" class="small">Guardar</button>
     </div>
@@ -351,7 +351,7 @@
       </table>
 
       <div class="actions">
-        <button id="exportLacticCSV">Exportar CSV</button>
+        <button id="exportLacticExcel">Exportar Excel</button>
         <button id="exportLacticPDF">Exportar PDF</button>
         <button id="saveLactic" class="small">Guardar</button>
       </div>
@@ -362,6 +362,7 @@
 </section>
 
 <script src="script.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <!-- BLOCKS DE NOTAS -->
 <section id="notesScreen" class="screen hidden">
@@ -369,13 +370,24 @@
     <button class="btn-back">← Volver</button>
     <h2>BLOCKS DE NOTAS</h2>
   </header>
+
   <div class="card">
-    <textarea id="notesText" style="width:100%;min-height:300px"></textarea>
+    <!-- Buscador de notas -->
+    <input type="text" id="searchNotes" placeholder="Buscar notas..." style="width:100%;margin-bottom:10px;padding:5px;">
+
+    <!-- Editor de nota -->
+    <input type="text" id="noteTitle" placeholder="Título de la nota" style="width:100%;margin-bottom:5px;padding:5px;">
+    <textarea id="notesText" placeholder="Escribe tu nota aquí..." style="width:100%;min-height:200px;margin-bottom:10px;padding:5px;"></textarea>
+
+    <!-- Acciones -->
     <div class="actions">
       <button id="saveNotes">Guardar</button>
       <button id="exportNotesPDF">Exportar PDF</button>
-      <button id="clearNotes" class="small">Borrar</button>
+      <button id="clearNotes">Borrar</button>
     </div>
+
+    <!-- Lista de notas -->
+    <div id="notesList" style="margin-top:15px;"></div>
   </div>
 </section>
 </body>

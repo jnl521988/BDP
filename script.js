@@ -281,7 +281,6 @@ function applyMoveToBodega(tr){
 }
 
 
-
 function revertMoveFromBodega(tr){
   try{
     const origVal = tr.querySelector('.movOrig').value;
@@ -815,28 +814,160 @@ if(el('exportLacticPDF')) el('exportLacticPDF').addEventListener('click', ()=>{
 if (el('btnNotes')) el('btnNotes').addEventListener('click', ()=> show('notesScreen'));
 
 // ---------- BLOCKS DE NOTAS ----------
-document.addEventListener('DOMContentLoaded', ()=>{
-  const notesText = el('notesText');
-  if(notesText){
-    notesText.value = localStorage.getItem('notesText') || '';
+document.addEventListener('DOMContentLoaded', () => {
+  const homeScreen = document.getElementById('homeScreen');
+  const notesScreen = document.getElementById('notesScreen');
+
+  const btnOpenNotes = document.getElementById('btnNotes'); // Botón en la página principal
+  const btnBackNotes = notesScreen.querySelector('.btn-back');
+
+  const noteTitle = document.getElementById('noteTitle');
+  const notesText = document.getElementById('notesText');
+  const notesList = document.getElementById('notesList');
+  const searchInput = document.getElementById('searchNotes');
+
+  const saveNotesBtn = document.getElementById('saveNotes');
+  const clearNotesBtn = document.getElementById('clearNotes');
+  const exportPDFBtn = document.getElementById('exportNotesPDF');
+
+  // -------------------------------
+  // Funciones de almacenamiento
+  // -------------------------------
+  function getNotes() {
+    return JSON.parse(localStorage.getItem('notes')) || [];
   }
 
-  document.addEventListener('click', (e)=>{
-    if(e.target.closest('#saveNotes')){
-      localStorage.setItem('notesText', notesText.value);
-      alert('Notas guardadas');
+  function saveNotesStorage(notes) {
+    localStorage.setItem('notes', JSON.stringify(notes));
+  }
+
+  // -------------------------------
+  // Renderizar lista de notas
+  // -------------------------------
+  function renderNotes(filter = '') {
+    const notes = getNotes();
+    notesList.innerHTML = '';
+    notes
+      .filter(n => n.title.toLowerCase().includes(filter.toLowerCase()))
+      .forEach((note, index) => {
+        const div = document.createElement('div');
+        div.classList.add('note-item');
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.marginBottom = '5px';
+        div.innerHTML = `
+          <strong>${note.title}</strong>
+          <div>
+            <button class="view" data-index="${index}">Ver</button>
+            <button class="delete" data-index="${index}">Borrar</button>
+          </div>
+        `;
+        notesList.appendChild(div);
+      });
+  }
+
+  // -------------------------------
+  // Abrir Block de Notas desde la página principal
+  // -------------------------------
+  btnOpenNotes.addEventListener('click', () => {
+    homeScreen.classList.add('hidden');
+    notesScreen.classList.remove('hidden');
+    renderNotes();
+  });
+
+  // -------------------------------
+  // Volver a la página principal
+  // -------------------------------
+  btnBackNotes.addEventListener('click', () => {
+    notesScreen.classList.add('hidden');
+    homeScreen.classList.remove('hidden');
+    noteTitle.value = '';
+    notesText.value = '';
+    searchInput.value = '';
+  });
+
+  // -------------------------------
+  // Guardar nota
+  // -------------------------------
+  saveNotesBtn.addEventListener('click', () => {
+    const title = noteTitle.value.trim();
+    const text = notesText.value.trim();
+    if (!title || !text) {
+      alert('Título y contenido son requeridos');
+      return;
     }
-    if(e.target.closest('#clearNotes')){
-      if(confirm('¿Borrar notas?')){
-        notesText.value='';
-        localStorage.removeItem('notesText');
-      }
-    }
-    if(e.target.closest('#exportNotesPDF')){
-      openPrint(`<h2>Blocks de Notas</h2><pre>${notesText.value.replace(/</g,'&lt;')}</pre>`);
+
+    const notes = getNotes();
+    notes.push({ title, text });
+    saveNotesStorage(notes);
+    renderNotes();
+    noteTitle.value = '';
+    notesText.value = '';
+    alert('Nota guardada');
+  });
+
+  // -------------------------------
+  // Borrar contenido del editor
+  // -------------------------------
+  clearNotesBtn.addEventListener('click', () => {
+    if (confirm('¿Borrar contenido actual?')) {
+      noteTitle.value = '';
+      notesText.value = '';
     }
   });
+
+  // -------------------------------
+  // Exportar nota a PDF
+  // -------------------------------
+  exportPDFBtn.addEventListener('click', () => {
+    if (!noteTitle.value || !notesText.value) {
+      alert('Escribe la nota antes de exportar');
+      return;
+    }
+    const printWindow = window.open('', '', 'width=800,height=600');
+    printWindow.document.write(`
+      <html>
+        <head><title>${noteTitle.value}</title></head>
+        <body>
+          <h2>${noteTitle.value}</h2>
+          <pre>${notesText.value.replace(/</g, '&lt;')}</pre>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  });
+
+  // -------------------------------
+  // Buscar notas
+  // -------------------------------
+  searchInput.addEventListener('input', () => renderNotes(searchInput.value));
+
+  // -------------------------------
+  // Ver y borrar notas de la lista
+  // -------------------------------
+  notesList.addEventListener('click', (e) => {
+    const index = e.target.dataset.index;
+    if (e.target.classList.contains('view')) {
+      const note = getNotes()[index];
+      noteTitle.value = note.title;
+      notesText.value = note.text;
+    }
+    if (e.target.classList.contains('delete')) {
+      if (confirm('¿Borrar esta nota?')) {
+        const notes = getNotes();
+        notes.splice(index, 1);
+        saveNotesStorage(notes);
+        renderNotes();
+      }
+    }
+  });
+
+  // Inicializar lista al cargar
+  renderNotes();
 });
+
+
 // BOTÓN BORRAR SALA
 if(el('clearSala')){
   el('clearSala').addEventListener('click', () => {
@@ -857,3 +988,112 @@ if(el('clearSala')){
   });
 }
 
+// ========== FUNCION GLOBAL PARA EXPORTAR EXCEL ==========
+function exportarExcelPorTabla(idTabla, columnasOcultas = []) {
+    const tabla = document.getElementById(idTabla);
+    if (!tabla) {
+        alert("No se encontró la tabla: " + idTabla);
+        return;
+    }
+
+    const filas = tabla.querySelectorAll("tr");
+    let datos = [];
+
+    filas.forEach((fila) => {
+        const celdas = fila.querySelectorAll("th, td");
+        let filaDatos = [];
+
+        celdas.forEach((celda, index) => {
+
+            // ❌ Ocultar columnas según lista
+            if (columnasOcultas.includes(index)) return;
+
+            // ✔ Select
+            if (celda.querySelector("select")) {
+                filaDatos.push(celda.querySelector("select").value || "");
+                return;
+            }
+
+            // ✔ Fecha
+            if (celda.querySelector("input[type='date']")) {
+                filaDatos.push(celda.querySelector("input[type='date']").value || "");
+                return;
+            }
+
+            // ✔ Input general
+            if (celda.querySelector("input")) {
+                filaDatos.push(celda.querySelector("input").value || "");
+                return;
+            }
+
+            // ✔ Texto
+            filaDatos.push(celda.textContent.trim());
+        });
+
+        datos.push(filaDatos);
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(datos);
+    XLSX.utils.book_append_sheet(wb, ws, "Datos");
+    XLSX.writeFile(wb, idTabla + ".xlsx"); // nombre según tabla
+}
+// MEZCLAS (columna de acción es la 6 -> índice 6)
+document.getElementById("exportMixExcel").onclick = () => 
+    exportarExcelPorTabla("mixTable", [6]);
+
+// MOVIMIENTOS (columna de acción es la 8 -> índice 8)
+document.getElementById("exportMovExcel").onclick = () => 
+    exportarExcelPorTabla("movTable", [8]);
+
+// BODEGA (NO tiene columna de 'acción', no ocultamos nada)
+document.getElementById("exportBodegaExcel").onclick = () => 
+    exportarExcelPorTabla("bodegaTable");
+
+// BARRICAS (columna de acción es la 9)
+document.getElementById("exportBarrExcel").onclick = () => 
+    exportarExcelPorTabla("barrTable", [9]);
+
+// PRODUCTOS (columna de acción es la 5)
+document.getElementById("exportProdExcel").onclick = () => 
+    exportarExcelPorTabla("prodTable", [5]);
+
+// ACIDO LÁCTICO (acción es la 7)
+document.getElementById("exportLacticExcel").onclick = () => 
+    exportarExcelPorTabla("acidLacticTable", [7]);
+
+document.getElementById("exportSO2Excel").onclick = () => {
+    const inputs = document.querySelectorAll("#so2Screen input");
+    const datos = [["Campo", "Valor"]]; // encabezado
+
+    // 1️⃣ Guardar valores de inputs
+    inputs.forEach(input => {
+        const label = input.previousElementSibling;
+        const nombre = label ? label.textContent.trim() : input.id;
+        const valor = input.value || "";
+        datos.push([nombre, valor]);
+    });
+
+    // 2️⃣ Guardar resultados del cálculo
+    const resultadosDiv = document.getElementById("so2Results");
+    if (resultadosDiv) {
+        // Si hay elementos hijos con resultados
+        const resultados = resultadosDiv.querySelectorAll("*");
+        resultados.forEach((elem, index) => {
+            const nombre = elem.dataset.label || "Resultado " + (index + 1);
+            const valor = elem.textContent.trim();
+            if (valor) datos.push([nombre, valor]);
+        });
+
+        // Si el div solo tiene texto plano
+        if (resultadosDiv.childElementCount === 0 && resultadosDiv.textContent.trim() !== "") {
+            datos.push(["Resultado", resultadosDiv.textContent.trim()]);
+        }
+    }
+
+    // 3️⃣ Crear Excel
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(datos);
+    XLSX.utils.book_append_sheet(wb, ws, "SO2");
+    XLSX.writeFile(wb, "SO2.xlsx");
+};
