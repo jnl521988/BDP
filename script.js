@@ -554,14 +554,13 @@ function addBarrRow(count=1, type=225, anyada=2022, fecha='', vino='', color='')
     </td>
     <td><input class="b_fecha" type="date" value="${fecha}"></td>
     <td class="col-carac"><input class="carac" type="text"></td>
-    <td class="col-vino"><select class="b_vino">${makeVinoSelect()}</select></td>
     <td><select class="b_color">${makeColorOptions()}</select></td>
     <td class="b_color">&nbsp;</td>
     <td><button class="small delB">Eliminar</button></td>
   `;
   barrBody.appendChild(tr);
   // add color swatch and change handler
-  (function(){ const colorSel = tr.querySelector('.b_color'); const sw = document.createElement('div'); sw.className='b_color_swatch'; sw.style.width='18px'; sw.style.height='18px'; sw.style.borderRadius='4px'; sw.style.border='1px solid rgba(0,0,0,0.08)'; sw.style.display='inline-block'; sw.style.marginLeft='8px'; if(colorSel && colorSel.value){ sw.style.background = (colorMap[colorSel.value]||'#ddd'); } const cell = tr.querySelector('td:last-child').parentNode ? tr.querySelector('td:last-child') : null; // append after color select
+  (function(){ const colorSel = tr.querySelector('.b_color'); const sw = document.createElement('div'); sw.className='b_color_swatch'; sw.style.width='81px'; sw.style.height='48px'; sw.style.borderRadius='6px'; sw.style.border='1px solid rgba(0,0,0,0.08)'; sw.style.display='inline-block'; sw.style.marginLeft='8px'; if(colorSel && colorSel.value){ sw.style.background = (colorMap[colorSel.value]||'#ddd'); } const cell = tr.querySelector('td:last-child').parentNode ? tr.querySelector('td:last-child') : null; // append after color select
   const colorCell = tr.querySelector('.b_color'); if(colorCell){ colorCell.parentNode.insertBefore(sw, colorCell.nextSibling); colorSel && colorSel.addEventListener('change', ()=>{ sw.style.background = colorMap[colorSel.value] || '#ddd'; }); }
   })();
   tr.querySelector('.b_type').value = type;
