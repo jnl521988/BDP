@@ -646,7 +646,7 @@ const paletteItems = [
   {name:'MADREMIA-1',label:'MM1'},{name:'MADREMIA-2',label:'MM2'},{name:'MADREMIA-3',label:'MM3'},{name:'MADREMIA-4',label:'MM4'},
   {name:'ABRACADABRA-1',label:'AB1'},{name:'ABRACADABRA-2',label:'AB2'},
   {name:'PLATON-1',label:'PL1'},{name:'PLATON-2',label:'PL2'},
-  {name:'DIVINA',label:'DV'},{name:'ROSADO',label:'RS'},{name:'LOQUILLO',label:'LQ'},{name:'ELPRINCIPITO',label:'EP'},
+  {name:'DIVINA',label:'DV'},{name:'ROSADO',label:'RS'},{name:'LOQUILLO',label:'LQ'},{name:'EL PRINCIPITO',label:'EP'},
   {name:'300',label:'300'},{name:'500',label:'500'}
 ];
 
@@ -763,8 +763,8 @@ function addLacticRow(){
     // dosis = (Acidez objetivo - Acidez actual) / porcentaje * 1.2
     const dose = pct ? ((obj - act) / pct) * 1.2 : 0;
 
-    tr.querySelector('.lacDose').textContent = dose.toFixed(4);
-    tr.querySelector('.lacRes').textContent = ((vol * dose) / 1000).toFixed(3);
+    tr.querySelector('.lacDose').textContent = dose.toFixed(2);
+    tr.querySelector('.lacRes').textContent = ((vol * dose) / 1000).toFixed(2);
   };
 
   tr.querySelectorAll('input, select').forEach(elm =>
@@ -1056,8 +1056,52 @@ function exportarExcelPorTabla(idTabla, columnasOcultas = []) {
     XLSX.writeFile(wb, idTabla + ".xlsx"); // nombre según tabla
 }
 // MEZCLAS (columna de acción es la 6 -> índice 6)
-document.getElementById("exportMixExcel").onclick = () => 
-    exportarExcelPorTabla("mixTable", [6]);
+document.getElementById("exportMixExcel").onclick = () => {
+    const tabla = document.getElementById("mixTable");
+    const filas = tabla.querySelectorAll("tr");
+    let datos = [];
+
+    filas.forEach((fila) => {
+        const celdas = fila.querySelectorAll("th, td");
+        let filaDatos = [];
+
+        celdas.forEach((celda, index) => {
+            // ❌ Ocultar columna de ACCIÓN (índice 6)
+            if (index === 6) return;
+
+            // ✔ Select
+            if (celda.querySelector("select")) {
+                filaDatos.push(celda.querySelector("select").value || "");
+                return;
+            }
+
+            // ✔ Input
+            if (celda.querySelector("input")) {
+                filaDatos.push(celda.querySelector("input").value || "");
+                return;
+            }
+
+            // ✔ Texto
+            filaDatos.push(celda.textContent.trim());
+        });
+
+        datos.push(filaDatos);
+    });
+
+    // 2️⃣ Agregar el resultado del cálculo desde el div corrector
+    const resultadosDiv = document.getElementById("mixResults");
+    if (resultadosDiv && resultadosDiv.textContent.trim() !== "") {
+        datos.push([]);
+        datos.push(["RESULTADO DE LA MEZCLA", resultadosDiv.textContent.trim()]);
+    }
+
+    // 3️⃣ Crear Excel
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(datos);
+    XLSX.utils.book_append_sheet(wb, ws, "Mezclas");
+    XLSX.writeFile(wb, "MEZCLAS.xlsx");
+};
+
 
 // MOVIMIENTOS (columna de acción es la 8 -> índice 8)
 document.getElementById("exportMovExcel").onclick = () => 
