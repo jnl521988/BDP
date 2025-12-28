@@ -650,7 +650,7 @@ const paletteItems = [
   {name:'300',label:'300'},{name:'500',label:'500'}
 ];
 
-function renderPalette(){ if(!paletteEl) return; paletteEl.innerHTML=''; paletteItems.forEach(it=>{ const d=document.createElement('div'); d.className='pallet-item'; d.draggable=true; d.dataset.name=it.name; d.title=it.name; d.textContent=it.label; d.style.background = colorMap[it.name] || '#999'; d.addEventListener('dragstart', (e)=>{ e.dataTransfer.setData('text/plain', it.name); }); paletteEl.appendChild(d); }); }
+function renderPalette(){ if(!paletteEl) return; paletteEl.innerHTML=''; paletteItems.forEach(it=>{ const d=document.createElement('div'); d.className='pallet-item'; d.draggable=true; d.dataset.name=it.name; d.textContent=it.label; d.style.background = colorMap[it.name] || '#999'; d.addEventListener('dragstart', (e)=>{ e.dataTransfer.setData('text/plain', it.name); }); paletteEl.appendChild(d); }); }
 renderPalette();
 
 // Sala storage structure: object { sala1: {...cells...}, sala2:..., sala3:... }
