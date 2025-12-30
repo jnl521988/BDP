@@ -267,7 +267,23 @@ function applyMoveToBodega(tr){
       alert(`Movimiento cancelado: el depósito ${dest} superaría su capacidad.`);
       return false;
     }
+/* 🚨 NUEVO: Validar que el depósito origen tenga suficientes litros */
+if (liters > volOrig) {
+  alert(`Movimiento cancelado:
+Intentas mover ${liters} L desde el depósito ${orig},
+pero solo tiene ${volOrig} L disponibles.`);
+  return false;
+}
 
+/* 🚨 Ya existente: validar capacidad del destino */
+if (volDest + liters > capDest) {
+  alert(`Movimiento cancelado: el depósito ${dest} superaría su capacidad.`);
+  return false;
+}
+
+/* ✔️ Si todo es correcto, aplicar el movimiento */
+rowOrig.querySelector('.volAct').value = Math.max(0, volOrig - liters).toFixed(0);
+rowDest.querySelector('.volAct').value = (volDest + liters).toFixed(0);
     rowOrig.querySelector('.volAct').value = Math.max(0, volOrig - liters).toFixed(0);
     rowDest.querySelector('.volAct').value = (volDest + liters).toFixed(0);
     calcBodegaTotals();
@@ -484,6 +500,7 @@ function calcBodegaTotals(){ if(!bBody) return; const rows=[...bBody.querySelect
   <p><strong>Capacidad Total:</strong> ${totalCap.toLocaleString()} L</p>
   <p><strong>Volumen Actual Total:</strong> ${totalVol.toLocaleString()} L</p>
   <p><strong>Capacidad Vacío: </strong> ${(totalCap - totalVol).toLocaleString()} L</p>
+  <p><strong>Capacidad Uvas: </strong> ${Math.round((totalCap - totalVol)/0.75).toLocaleString()} K<span style="text-transform:lowercase;">g</span></p>
   <p><strong>Grado Medio (Ponderado):</strong> ${avgGrad.toFixed(2)} %</p>
   <p><strong>pH Medio (No Lineal):</strong> ${avgPH==='—'?'—':avgPH.toFixed(2)}</p>
   <p><strong>Ácidez Media (Ponderada):</strong> ${avgAcid.toFixed(2)} g/L</p>
@@ -1158,3 +1175,150 @@ document.getElementById("exportSO2Excel").onclick = () => {
     XLSX.utils.book_append_sheet(wb, ws, "SO2");
     XLSX.writeFile(wb, "SO2.xlsx");
 };
+function generateMapa(){
+  const container = el('mapContainer');
+  if(!container || !bBody) return;
+
+  container.innerHTML='';
+
+  const rows = [...bBody.querySelectorAll('tr')];
+  const depositData = rows.map((r, idx) => {
+    const cap = parseFloat(r.querySelector('.cap').value) || capacities[idx];
+    const actual = parseFloat(r.querySelector('.volAct').value) || 0;
+    const vinoSelect = r.querySelector('.vino');
+    const vino = vinoSelect ? vinoSelect.value : 'Tinto';
+    const pct = cap > 0 ? Math.min(100, (actual / cap) * 100) : 0;
+    return { index: idx + 1, cap, actual, vino, pct };
+  });
+
+  // Crear contenedores de Naves
+  const nave1Container = document.createElement('div');
+  nave1Container.id = 'nave1';
+  const nave2Container = document.createElement('div');
+  nave2Container.id = 'nave2';
+
+  // Títulos de Nave
+  const h1 = document.createElement('h3'); h1.textContent = 'NAVE MADREMIA'; nave1Container.appendChild(h1);
+  const h2 = document.createElement('h3'); h2.textContent = 'NAVE PLATÓN'; nave2Container.appendChild(h2);
+
+  let di = 0;
+  mapaRowCounts.forEach((count, rowIdx) => {
+    const rowWrap = document.createElement('div');
+    rowWrap.className = 'map-row';
+
+    for(let i=0; i<count; i++){
+      const d = depositData[di];
+      const wrap = document.createElement('div');
+      wrap.className = 'dep-wrap';
+      
+      const depEl = document.createElement('div');
+      depEl.className = 'dep';
+      depEl.setAttribute('data-dep', d.index);
+
+      const fill = document.createElement('div');
+      fill.className = 'fill';
+      fill.style.background = wineColors[d.vino] || wineColors['Tinto'];
+      fill.style.height = `${d.pct}%`;
+
+      const center = document.createElement('div');
+      center.className = 'center';
+      const dnum = document.createElement('div');
+      dnum.className = 'dnum';
+      dnum.textContent = `D${d.index}`;
+      center.appendChild(dnum);
+
+      const caption = document.createElement('div');
+      caption.className = 'dep-caption';
+      caption.textContent = `${Math.round(d.actual).toLocaleString()} / ${d.cap.toLocaleString()} L`;
+
+      const pctBadge = document.createElement('div');
+      pctBadge.className = 'pct';
+      pctBadge.textContent = `${Math.round(d.pct)}%`;
+
+      depEl.appendChild(fill);
+      depEl.appendChild(center);
+      depEl.appendChild(pctBadge);
+
+      depEl.addEventListener('click', () => {
+        show('bodegaScreen');
+        const targetRow = bBody.querySelector(`tr:nth-child(${d.index})`);
+        if(targetRow){
+          targetRow.scrollIntoView({behavior:'smooth', block:'center'});
+          targetRow.classList.remove('bodega-highlight');
+          void targetRow.offsetWidth;
+          targetRow.classList.add('bodega-highlight');
+        }
+      });
+
+      wrap.appendChild(depEl);
+      wrap.appendChild(caption);
+      rowWrap.appendChild(wrap);
+      di++;
+    }
+
+    // Asignar fila según nave
+    if(rowIdx < 2) nave1Container.appendChild(rowWrap); // filas 0 y 1 → Nave 1
+    else nave2Container.appendChild(rowWrap);          // filas 2 y 3 → Nave 2
+  });
+
+  container.appendChild(nave1Container);
+  container.appendChild(nave2Container);
+}
+
+// Llamar a la función después de construir la tabla
+generateMapa();
+// ==== FORZAR QUE SOLO SE USE LA NUEVA EXPORTACIÓN ====
+
+// limpiar eventos anteriores
+const btnJPG = document.getElementById("exportMapaPNG");
+const btnPDF = document.getElementById("exportMapaPDF");
+
+if(btnJPG){
+  btnJPG.replaceWith(btnJPG.cloneNode(true));
+}
+if(btnPDF){
+  btnPDF.replaceWith(btnPDF.cloneNode(true));
+}
+
+// volver a capturar los nuevos botones limpios
+const btnJPGnew = document.getElementById("exportMapaPNG");
+const btnPDFnew = document.getElementById("exportMapaPDF");
+
+
+/***  NUEVAS FUNCIONES DE EXPORTACIÓN VISUAL  ***/
+function exportMapaVisualJPG(){
+  const target = document.getElementById("mapContainer");
+  if(!target) return alert("No se encuentra el mapa");
+
+  html2canvas(target, { backgroundColor:"#ffffff", scale:2 }).then(canvas=>{
+    const jpg = canvas.toDataURL("image/jpeg", 0.95);
+    const a = document.createElement("a");
+    a.href = jpg;
+    a.download = "mapa_depositos.jpg";
+    a.click();
+  });
+}
+
+function exportMapaVisualPDF(){
+  const target = document.getElementById("mapContainer");
+  if(!target) return alert("No se encuentra el mapa");
+
+  html2canvas(target, { backgroundColor:"#ffffff", scale:2 }).then(canvas=>{
+    const img = canvas.toDataURL("image/jpeg", 0.95);
+    const w = window.open("", "_blank");
+    w.document.write(`
+      <html><head><title>Mapa de Depósitos</title></head>
+      <body style="text-align:center;font-family:Arial">
+        <h2>Mapa de Depósitos</h2>
+        <img src="${img}" style="width:100%;max-width:1200px"/>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    setTimeout(()=>w.print(), 400);
+  });
+}
+
+// ASIGNAR EVENTOS NUEVOS
+if(btnJPGnew) btnJPGnew.addEventListener("click", exportMapaVisualJPG);
+if(btnPDFnew) btnPDFnew.addEventListener("click", exportMapaVisualPDF);

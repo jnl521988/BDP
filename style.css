@@ -214,3 +214,18 @@ input[type="number"],input[type="text"],select{width:100%;padding:10px;border-ra
 /* responsive */
 
 .sala-cell .cell-label{display:none}
+#nave1, #nave2{
+  margin-bottom:20px;
+  padding:10px;
+  border-radius:12px;
+  background: #a2a6a7;
+}
+
+#nave1 h3, #nave2 h3{
+  text-align:center;
+  font-weight:800;
+  margin-bottom:10px;
+  background: rgba(210, 110, 187, 0.659);
+  padding:6px;
+  border-radius:8px;
+}
