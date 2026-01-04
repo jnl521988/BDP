@@ -432,13 +432,18 @@ function updateControlsState(){ /* placeholder for enabling/disabling buttons if
 loadMov();
 
 // ----------------------
-// BODEGA: build table with VINO select column (added Color select)
+// BODEGA: build table with VINO select column
 // ----------------------
 const bBody = el('bodegaTableBody');
 const bResults = el('bodegaResults');
 
-function makeAnyadaSelect(){ return [0,2022,2023,2024,2025,2026,2027,2028,2029,2030].map(y=>`<option value="${y}">${y}</option>`).join(''); }
+// Lista de años para el select de añada
+function makeAnyadaSelect(){
+  return [0,2022,2023,2024,2025,2026,2027,2028,2029,2030]
+    .map(y=>`<option value="${y}">${y}</option>`).join('');
+}
 
+// Select de tipo de vino
 function makeVinoSelectHTML(selected='Tinto'){
   return `
     <select class="vino">
@@ -449,101 +454,180 @@ function makeVinoSelectHTML(selected='Tinto'){
   `;
 }
 
-function makeColorSelectHTML(selected=''){
-  const opts = Object.keys(colorMap).map(k=>`<option value="${k}" ${selected===k?'selected':''}>${k}</option>`).join('');
-  return `<select class="colorSel">${opts}</select>`;
+// Construir tabla vacía
+function buildBodega(){
+  if(!bBody) return;
+  bBody.innerHTML = '';
+  for(let i=0;i<23;i++){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="dep-num-col">${i+1}</td>
+      <td><input class="cap" type="number" value="${capacities[i]}" readonly></td>
+      <td><input class="volAct" type="number" value="0"></td>
+      <td><input class="grado" type="number" step="0.01" value="0"></td>
+      <td><input class="ph" type="number" step="0.01" value="0"></td>
+      <td><input class="acid" type="number" step="0.01" value="0"></td>
+      <td>${makeVinoSelectHTML('Tinto')}</td>
+      <td><select class="añada">${makeAnyadaSelect()}</select></td>
+      <td><input class="so2" type="number" step="0.01" value="0"></td>
+      <td class="col-carac"><input class="carac" type="text"></td>
+    `;
+    bBody.appendChild(tr);
+  }
 }
 
-function buildBodega(){ if(!bBody) return; bBody.innerHTML = ''; for(let i=0;i<23;i++){ const tr=document.createElement('tr'); tr.innerHTML = `
-  <td class="dep-num-col">${i+1}</td>
-  <td><input class="cap" type="number" value="${capacities[i]}" readonly></td>
-  <td><input class="volAct" type="number" value="0"></td>
-  <td><input class="grado" type="number" step="0.01" value="0"></td>
-  <td><input class="ph" type="number" step="0.01" value="0"></td>
-  <td><input class="acid" type="number" step="0.01" value="0"></td>
-  <td>${makeVinoSelectHTML('Tinto')}</td>
-  <td><select class="añada">${makeAnyadaSelect()}</select></td>
-  <td><input class="so2" type="number"></td>
-  <td class="col-carac"><input class="carac" type="text"></td>
-`;
-    bBody.appendChild(tr);
-  }}
-buildBodega();
-
+// ----------------------
+// Adjuntar handlers de volAct
+// ----------------------
 function attachVolActHandlers(){
   if(!bBody) return;
   [...bBody.querySelectorAll('tr')].forEach((row, idx) => {
     const volInput = row.querySelector('.volAct');
     const capInput = row.querySelector('.cap');
     if(!volInput || !capInput) return;
-    // avoid double attaching
     if(volInput._volHandlerAttached) return;
     volInput._volHandlerAttached = true;
     volInput.addEventListener('input', ()=>{
       const cap = parseFloat(capInput.value) || 0;
       let val = parseFloat(volInput.value) || 0;
       if(val > cap){
-        // clamp and warn
         volInput.value = cap.toFixed(2);
         alert(`Atención: el volumen no puede superar la capacidad del depósito ${idx+1} (${cap.toLocaleString()} L).`);
       }
       calcBodegaTotals();
-      attachVolActHandlers();
     });
   });
 }
 
+// ----------------------
+// Cálculo totales
+// ----------------------
+function calcBodegaTotals(){
+  if(!bBody) return;
+  const rows = [...bBody.querySelectorAll('tr')];
+  let totalCap=0, totalVol=0, sumGrad=0, sumAcid=0, sumH=0, volH=0;
 
-function calcBodegaTotals(){ if(!bBody) return; const rows=[...bBody.querySelectorAll('tr')]; let totalCap=0, totalVol=0, sumGrad=0, sumAcid=0, sumH=0, volH=0; rows.forEach(r=>{ const cap=parseFloat(r.querySelector('.cap').value)||0; const v=parseFloat(r.querySelector('.volAct').value)||0; const g=parseFloat(r.querySelector('.grado').value)||0; const a=parseFloat(r.querySelector('.acid').value)||0; const pRaw=r.querySelector('.ph').value; const p=pRaw===''?null:parseFloat(pRaw); totalCap+=cap; totalVol+=v; sumGrad+=v*g; sumAcid+=v*a; if(p!==null){ const H=Math.pow(10,-p); sumH+=H*v; volH+=v; } }); const avgGrad = totalVol>0 ? sumGrad/totalVol : 0; const avgAcid = totalVol>0 ? sumAcid/totalVol : 0; const avgPH = volH>0 ? -Math.log10(sumH/volH) : '—'; if(bResults) bResults.innerHTML = `
-  <h3>Totales Bodega</h3>
-  <p><strong>Depósitos:</strong> 23</p>
-  <p><strong>Capacidad Total:</strong> ${totalCap.toLocaleString()} L</p>
-  <p><strong>Volumen Actual Total:</strong> ${totalVol.toLocaleString()} L</p>
-  <p><strong>Capacidad Vacío: </strong> ${(totalCap - totalVol).toLocaleString()} L</p>
-  <p><strong>Capacidad Uvas: </strong> ${Math.round((totalCap - totalVol)/0.75).toLocaleString()} K<span style="text-transform:lowercase;">g</span></p>
-  <p><strong>Grado Medio (Ponderado):</strong> ${avgGrad.toFixed(2)} %</p>
-  <p><strong>pH Medio (No Lineal):</strong> ${avgPH==='—'?'—':avgPH.toFixed(2)}</p>
-  <p><strong>Ácidez Media (Ponderada):</strong> ${avgAcid.toFixed(2)} g/L</p>
-`; }
+  rows.forEach(r=>{
+    const cap = parseFloat(r.querySelector('.cap').value)||0;
+    const v = parseFloat(r.querySelector('.volAct').value)||0;
+    const g = parseFloat(r.querySelector('.grado').value)||0;
+    const a = parseFloat(r.querySelector('.acid').value)||0;
+    const pRaw = r.querySelector('.ph').value;
+    const p = pRaw===''?null:parseFloat(pRaw);
+
+    totalCap += cap;
+    totalVol += v;
+    sumGrad += v*g;
+    sumAcid += v*a;
+
+    if(p!==null){
+      const H = Math.pow(10,-p);
+      sumH += H*v;
+      volH += v;
+    }
+  });
+
+  const avgGrad = totalVol>0 ? sumGrad/totalVol : 0;
+  const avgAcid = totalVol>0 ? sumAcid/totalVol : 0;
+  const avgPH = volH>0 ? -Math.log10(sumH/volH) : '—';
+
+  if(bResults) bResults.innerHTML = `
+    <h3>Totales Bodega</h3>
+    <p><strong>Depósitos:</strong> 23</p>
+    <p><strong>Capacidad Total:</strong> ${totalCap.toLocaleString()} L</p>
+    <p><strong>Volumen Actual Total:</strong> ${totalVol.toLocaleString()} L</p>
+    <p><strong>Capacidad Vacío: </strong> ${(totalCap - totalVol).toLocaleString()} L</p>
+    <p><strong>Capacidad Uvas: </strong> ${Math.round((totalCap - totalVol)/0.75).toLocaleString()} K<span style="text-transform:lowercase;">g</span></p>
+    <p><strong>Grado Medio (Ponderado):</strong> ${avgGrad.toFixed(2)} %</p>
+    <p><strong>pH Medio (No Lineal):</strong> ${avgPH==='—'?'—':avgPH.toFixed(2)}</p>
+    <p><strong>Ácidez Media (Ponderada):</strong> ${avgAcid.toFixed(2)} g/L</p>
+  `;
+}
 
 if(bBody) bBody.addEventListener('input', calcBodegaTotals);
-calcBodegaTotals();
-      attachVolActHandlers();
 
-if (el('saveBodega')) el('saveBodega').addEventListener('click', ()=>{ if(!bBody) return; const rows=[...bBody.querySelectorAll('tr')].map(r=>({ cap:r.querySelector('.cap').value, vol:r.querySelector('.volAct').value, grado:r.querySelector('.grado').value, ph:r.querySelector('.ph').value, acid:r.querySelector('.acid').value, vino: r.querySelector('.vino') ? r.querySelector('.vino').value : 'Tinto', anyada: r.querySelector('.añada').value, so2: r.querySelector('.so2').value, carac: r.querySelector('.carac').value })); localStorage.setItem('bodegaData', JSON.stringify(rows)); alert('Bodega guardada'); });
-
-function loadBodega(){ const raw=localStorage.getItem('bodegaData'); if(!raw||!bBody) return; try{ const rows=JSON.parse(raw); buildBodega();
-
-function attachVolActHandlers(){
-  if(!bBody) return;
-  [...bBody.querySelectorAll('tr')].forEach((row, idx) => {
-    const volInput = row.querySelector('.volAct');
-    const capInput = row.querySelector('.cap');
-    if(!volInput || !capInput) return;
-    // avoid double attaching
-    if(volInput._volHandlerAttached) return;
-    volInput._volHandlerAttached = true;
-    volInput.addEventListener('input', ()=>{
-      const cap = parseFloat(capInput.value) || 0;
-      let val = parseFloat(volInput.value) || 0;
-      if(val > cap){
-        // clamp and warn
-        volInput.value = cap.toFixed(2);
-        alert(`Atención: el volumen no puede superar la capacidad del depósito ${idx+1} (${cap.toLocaleString()} L).`);
-      }
-      calcBodegaTotals();
-      attachVolActHandlers();
-    });
+// ----------------------
+// Guardar Bodega en localStorage
+// ----------------------
+if (el('saveBodega')) {
+  el('saveBodega').addEventListener('click', ()=>{
+    if(!bBody) return;
+    const rows = [...bBody.querySelectorAll('tr')].map(r => ({
+      cap: r.querySelector('.cap')?.value || 0,
+      vol: r.querySelector('.volAct')?.value || 0,
+      grado: r.querySelector('.grado')?.value || 0,
+      ph: r.querySelector('.ph')?.value || 0,
+      acid: r.querySelector('.acid')?.value || 0,
+      vino: r.querySelector('.vino')?.value || 'Tinto',
+      anyada: r.querySelector('.añada')?.value || 0,
+      so2: r.querySelector('.so2')?.value || 0, // ✅ Guardado correcto
+      carac: r.querySelector('.carac')?.value || ''
+    }));
+    localStorage.setItem('bodegaData', JSON.stringify(rows));
+    alert('Bodega guardada');
   });
 }
- const trs=[...bBody.querySelectorAll('tr')]; trs.forEach((tr,i)=>{ if(rows[i]){ tr.querySelector('.volAct').value = rows[i].vol || 0; tr.querySelector('.grado').value = rows[i].grado || 0; tr.querySelector('.ph').value = rows[i].ph || 0; tr.querySelector('.acid').value = rows[i].acid || 0; if(rows[i].vino && tr.querySelector('.vino')) tr.querySelector('.vino').value = rows[i].vino; if(rows[i].anyada) tr.querySelector('.añada').value = rows[i].anyada; if(rows[i].color && tr.querySelector('.so2')) tr.querySelector('.so2').value = rows[i].color; tr.querySelector('.carac').value = rows[i].carac || ''; } }); calcBodegaTotals();
-      attachVolActHandlers(); }catch(e){ console.error(e);} }
+
+// ----------------------
+// Cargar Bodega desde localStorage
+// ----------------------
+function loadBodega(){
+  const raw = localStorage.getItem('bodegaData');
+  if(!bBody) return;
+  buildBodega();
+
+  if(!raw) return attachVolActHandlers();
+
+  try{
+    const rows = JSON.parse(raw);
+    const trs = [...bBody.querySelectorAll('tr')];
+
+    trs.forEach((tr,i)=>{
+      if(!rows[i]) return;
+
+      tr.querySelector('.volAct').value = rows[i].vol || 0;
+      tr.querySelector('.grado').value = rows[i].grado || 0;
+      tr.querySelector('.ph').value = rows[i].ph || 0;
+      tr.querySelector('.acid').value = rows[i].acid || 0;
+      tr.querySelector('.so2').value = rows[i].so2 || 0; // ✅ Cargado correcto
+      tr.querySelector('.carac').value = rows[i].carac || '';
+      if(rows[i].vino && tr.querySelector('.vino')) tr.querySelector('.vino').value = rows[i].vino;
+      if(rows[i].anyada && tr.querySelector('.añada')) tr.querySelector('.añada').value = rows[i].anyada;
+    });
+
+    calcBodegaTotals();
+    attachVolActHandlers();
+
+  }catch(e){
+    console.error('Error cargando bodega:', e);
+  }
+}
+
+// ----------------------
+// Export CSV y PDF
+// ----------------------
+if (el('exportBodegaCSV')) el('exportBodegaCSV').addEventListener('click', ()=>{
+  if(!bBody) return;
+  let csv = 'Deposito,Capacidad,VolumenActual,Grado,pH,Acidez,Vino,Añada,SO2,Caracteristicas\n';
+  [...bBody.querySelectorAll('tr')].forEach((r,i)=>{
+    const vinoVal = r.querySelector('.vino')?.value || '';
+    csv += [i+1, r.querySelector('.cap').value, r.querySelector('.volAct').value, r.querySelector('.grado').value, r.querySelector('.ph').value, r.querySelector('.acid').value, vinoVal, r.querySelector('.añada').value, r.querySelector('.so2').value || 0, `"${r.querySelector('.carac').value||''}"`].join(',')+'\n';
+  });
+  downloadCSV(csv,'bodega.csv');
+});
+
+if (el('exportBodegaPDF')) el('exportBodegaPDF').addEventListener('click', ()=>{
+  const tableHtml = tableToPrintableHTML(document.getElementById('bodegaTable'));
+  const html = `<h2>Informe Bodega</h2>${tableHtml}${bResults.innerHTML}`;
+  openPrint(html);
+});
+
+// ----------------------
+// Inicialización
+// ----------------------
 loadBodega();
 attachVolActHandlers();
-
-
-if (el('exportBodegaCSV')) el('exportBodegaCSV').addEventListener('click', ()=>{ if(!bBody) return; let csv='Deposito,Capacidad,VolumenActual,Grado,pH,Acidez,Vino,Añada,Color,Caracteristicas\n'; [...bBody.querySelectorAll('tr')].forEach((r,i)=>{ const vinoVal = r.querySelector('.vino') ? r.querySelector('.vino').value : ''; csv += [i+1, r.querySelector('.cap').value, r.querySelector('.volAct').value, r.querySelector('.grado').value, r.querySelector('.ph').value, r.querySelector('.acid').value, vinoVal, r.querySelector('.añada').value, r.querySelector('.so2').value || '', `"${r.querySelector('.carac').value||''}"`].join(',')+'\n'; }); downloadCSV(csv,'bodega.csv'); });
-if (el('exportBodegaPDF')) el('exportBodegaPDF').addEventListener('click', ()=>{ const tableHtml = tableToPrintableHTML(document.getElementById('bodegaTable')); const html = `<h2>Informe Bodega</h2>${tableHtml}${bResults.innerHTML}`; openPrint(html); });
+calcBodegaTotals();
 
 // ---------- BARRICAS ---------- (list) ----------
 const barrBody = el('barrTableBody');
