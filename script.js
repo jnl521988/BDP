@@ -780,6 +780,20 @@ function loadBarr() {
     console.error(e);
   }
 }
+if (el('exportBarrPDF')) {
+  el('exportBarrPDF').addEventListener('click', () => {
+    const table = document.getElementById('barrTable');
+    if (!table) return;
+
+    const tableHtml = tableToPrintableHTML(table);
+    const html = `
+      <h2>Barricas</h2>
+      ${tableHtml}
+    `;
+
+    openPrint(html);
+  });
+}
 
 loadBarr();
 
