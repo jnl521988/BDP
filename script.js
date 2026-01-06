@@ -633,15 +633,17 @@ calcBodegaTotals();
 const barrBody = el('barrTableBody');
 const barrCount = el('barrCount');
 const barrLitros = el('barrLitros');
-const vinoOptions = ["24 MOZAS","MADREMIA","ABRACADABRA","PLATON","LOQUILLO TINTO","ENCOMIENDA DE LA VEGA","EL PRINCIPITO","DIVINA PROPORCIÓN"];
-function makeVinoSelect(){ return vinoOptions.map(v=>`<option value="${v}">${v}</option>`).join(''); }
-function makeColorOptions(){ return Object.keys(colorMap).map(k=>`<option value="${k}">${k}</option>`).join(''); }
 
-function addBarrRow(count=1, type=225, anyada=2022, fecha='', vino='', color=''){
-  if(!barrBody) return;
-  const tr=document.createElement('tr');
+function makeColorOptions() {
+  return Object.keys(colorMap).map(k => `<option value="${k}">${k}</option>`).join('');
+}
+
+function addBarrRow(count = 1, type = 225, anyada = 2022, fecha = '', color = '', carac = '') {
+  if (!barrBody) return;
+
+  const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input class="b_count" type="number" value="${count}" min="1"></td>
+    <td><input class="b_count" type="number" min="1" value="${count}"></td>
     <td>
       <select class="b_type">
         <option value="225">225</option>
@@ -651,41 +653,136 @@ function addBarrRow(count=1, type=225, anyada=2022, fecha='', vino='', color='')
     </td>
     <td class="b_total">0</td>
     <td>
-      <select class="b_anyada">${[2022,2023,2024,2025,2026,2027,2028,2029,2030].map(y=>`<option value="${y}">${y}</option>`).join('')}</select>
+      <select class="b_anyada">
+        ${[2022,2023,2024,2025,2026,2027,2028,2029,2030]
+          .map(y => `<option value="${y}">${y}</option>`).join('')}
+      </select>
     </td>
     <td><input class="b_fecha" type="date" value="${fecha}"></td>
-    <td class="col-carac"><input class="carac" type="text"></td>
-    <td><select class="b_color">${makeColorOptions()}</select></td>
-    <td class="b_color">&nbsp;</td>
+    <td class="col-carac"><input class="carac" type="text" value="${carac}"></td>
+    <td>
+      <select class="b_color">${makeColorOptions()}</select>
+      <div class="b_color_swatch"></div>
+    </td>
+    <td>&nbsp;</td>
     <td><button class="small delB">Eliminar</button></td>
   `;
+
   barrBody.appendChild(tr);
-  // add color swatch and change handler
-  (function(){ const colorSel = tr.querySelector('.b_color'); const sw = document.createElement('div'); sw.className='b_color_swatch'; sw.style.width='81px'; sw.style.height='48px'; sw.style.borderRadius='6px'; sw.style.border='1px solid rgba(0,0,0,0.08)'; sw.style.display='inline-block'; sw.style.marginLeft='8px'; if(colorSel && colorSel.value){ sw.style.background = (colorMap[colorSel.value]||'#ddd'); } const cell = tr.querySelector('td:last-child').parentNode ? tr.querySelector('td:last-child') : null; // append after color select
-  const colorCell = tr.querySelector('.b_color'); if(colorCell){ colorCell.parentNode.insertBefore(sw, colorCell.nextSibling); colorSel && colorSel.addEventListener('change', ()=>{ sw.style.background = colorMap[colorSel.value] || '#ddd'; }); }
-  })();
+
+  // Inicializar valores
   tr.querySelector('.b_type').value = type;
   tr.querySelector('.b_anyada').value = anyada;
-  if(vino) tr.querySelector('.b_vino').value = vino;
-  if(color) tr.querySelector('.b_color').value = color;
-  const compute = ()=>{ const cnt = parseFloat(tr.querySelector('.b_count').value)||0; const t = parseFloat(tr.querySelector('.b_type').value)||0; tr.querySelector('.b_total').textContent = (cnt*t).toFixed(0); updateBarrTotals(); };
+  tr.querySelector('.b_color').value = color;
+
+  // Swatch color
+  const colorSel = tr.querySelector('.b_color');
+  const swatch = tr.querySelector('.b_color_swatch');
+  swatch.style.width = '72px';
+  swatch.style.height = '44px';
+  swatch.style.borderRadius = '6px';
+  swatch.style.border = '1px solid rgba(0,0,0,0.08)';
+  swatch.style.display = 'inline-block';
+  swatch.style.marginLeft = '8px';
+  swatch.style.background = colorMap[colorSel.value] || '#ddd';
+
+  colorSel.addEventListener('change', () => {
+    swatch.style.background = colorMap[colorSel.value] || '#ddd';
+  });
+
+  // Cálculo litros barricas
+  const compute = () => {
+    const cnt = parseFloat(tr.querySelector('.b_count').value) || 0;
+    const cap = parseFloat(tr.querySelector('.b_type').value) || 0;
+    tr.querySelector('.b_total').textContent = (cnt * cap).toFixed(0);
+    updateBarrTotals();
+  };
+
   tr.querySelector('.b_count').addEventListener('input', compute);
   tr.querySelector('.b_type').addEventListener('change', compute);
-  tr.querySelector('.delB').addEventListener('click', ()=>{ tr.remove(); updateBarrTotals(); });
+
+  tr.querySelector('.delB').addEventListener('click', () => {
+    tr.remove();
+    updateBarrTotals();
+  });
+
   compute();
 }
-if (el('addBarrRow')) el('addBarrRow').addEventListener('click', ()=> addBarrRow());
-addBarrRow(1,225,2022,'','');
 
-function updateBarrTotals(){ if(!barrBody) return; const rows=[...barrBody.querySelectorAll('tr')]; let totalBarr=0, totalLit=0; rows.forEach(r=>{ const cnt=parseFloat(r.querySelector('.b_count').value)||0; const t=parseFloat(r.querySelector('.b_type').value)||0; totalBarr+=cnt; totalLit+=cnt*t; }); if(barrCount) barrCount.textContent = totalBarr; if(barrLitros) barrLitros.textContent = totalLit.toFixed(0); }
+// Añadir fila
+if (el('addBarrRow')) {
+  el('addBarrRow').addEventListener('click', () => addBarrRow());
+}
+
+// Fila inicial
+addBarrRow(1, 225, 2022, '', '', '');
+
+// Totales
+function updateBarrTotals() {
+  if (!barrBody) return;
+
+  let totalBarr = 0;
+  let totalLit = 0;
+
+  [...barrBody.querySelectorAll('tr')].forEach(r => {
+    const cnt = parseFloat(r.querySelector('.b_count').value) || 0;
+    const cap = parseFloat(r.querySelector('.b_type').value) || 0;
+    totalBarr += cnt;
+    totalLit += cnt * cap;
+  });
+
+  if (barrCount) barrCount.textContent = totalBarr;
+  if (barrLitros) barrLitros.textContent = totalLit.toFixed(0);
+}
+
 barrBody && barrBody.addEventListener('input', updateBarrTotals);
 updateBarrTotals();
 
-if (el('exportBarrCSV')) el('exportBarrCSV').addEventListener('click', ()=>{ if(!barrBody) return; let csv = 'Cantidad,Tipo,Litros,A\u00f1ada,Fecha,TipoVino,Color\n'; [...barrBody.querySelectorAll('tr')].forEach(r=>{ csv += [r.querySelector('.b_count').value, r.querySelector('.b_type').value, r.querySelector('.b_total').textContent, r.querySelector('.b_anyada').value, r.querySelector('.b_fecha').value, r.querySelector('.b_vino').value, r.querySelector('.b_color').value].join(',')+'\n'; }); downloadCSV(csv,'barricas.csv'); });
-if (el('exportBarrPDF')) el('exportBarrPDF').addEventListener('click', () => { const tableHtml = tableToPrintableHTML(document.getElementById('barrTable')); const html = `<h2>Barricas</h2>${tableHtml}${barrResults ? barrResults.innerHTML : ''}`; openPrint(html); });
-if (el('saveBarr')) el('saveBarr').addEventListener('click', ()=>{ if(!barrBody) return; const rows=[...barrBody.querySelectorAll('tr')].map(r=>({ count:r.querySelector('.b_count').value, type:r.querySelector('.b_type').value, anyada:r.querySelector('.b_anyada').value, fecha:r.querySelector('.b_fecha').value, vino:r.querySelector('.b_vino').value, so2:r.querySelector('.b_color').value })); localStorage.setItem('barrData', JSON.stringify(rows)); alert('Barricas guardadas'); });
-function loadBarr(){ const raw = localStorage.getItem('barrData'); if(!raw || !barrBody) return; try{ const rows = JSON.parse(raw); barrBody.innerHTML=''; rows.forEach(r=> addBarrRow(r.count||1, r.type||225, r.anyada||2022, r.fecha||'', r.vino||'', r.color||'')); updateBarrTotals(); }catch(e){ console.error(e); } }
+// ---------- GUARDAR ----------
+if (el('saveBarr')) {
+  el('saveBarr').addEventListener('click', () => {
+    if (!barrBody) return;
+
+    const rows = [...barrBody.querySelectorAll('tr')].map(r => ({
+      count: r.querySelector('.b_count').value,
+      type: r.querySelector('.b_type').value,
+      anyada: r.querySelector('.b_anyada').value,
+      fecha: r.querySelector('.b_fecha').value,
+      color: r.querySelector('.b_color').value,
+      carac: r.querySelector('.carac').value
+    }));
+
+    localStorage.setItem('barrData', JSON.stringify(rows));
+    alert('Barricas guardadas correctamente');
+  });
+}
+
+// ---------- CARGAR ----------
+function loadBarr() {
+  const raw = localStorage.getItem('barrData');
+  if (!raw || !barrBody) return;
+
+  try {
+    const rows = JSON.parse(raw);
+    barrBody.innerHTML = '';
+    rows.forEach(r =>
+      addBarrRow(
+        r.count || 1,
+        r.type || 225,
+        r.anyada || 2022,
+        r.fecha || '',
+        r.color || '',
+        r.carac || ''
+      )
+    );
+    updateBarrTotals();
+  } catch (e) {
+    console.error(e);
+  }
+}
+
 loadBarr();
+
 
 // ---------- SO2 ----------
 if (el('useMixVolume')) el('useMixVolume').addEventListener('click', ()=>{ if(lastMixVolume>0) el('so2Volume').value = lastMixVolume; });
