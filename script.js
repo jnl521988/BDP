@@ -870,17 +870,34 @@ let salaState = { sala1:{}, sala2:{}, sala3:{} };
 
 function buildSalaGrid(){ if(!salaGrid) return; salaGrid.innerHTML=''; for(let r=0;r<SALA_ROWS;r++){ for(let c=0;c<SALA_COLS;c++){ const idx = r*SALA_COLS + c; const cell = document.createElement('div'); cell.className='sala-cell empty'; cell.dataset.idx = idx; cell.dataset.row = r; cell.dataset.col = c; cell.addEventListener('dragover', (e)=> e.preventDefault()); cell.addEventListener('drop', onCellDrop); cell.addEventListener('click', ()=> selectCell(cell)); const label = document.createElement('div'); label.className='cell-label'; cell.appendChild(label); const count = document.createElement('div'); count.className='count'; count.textContent='0'; cell.appendChild(count); salaGrid.appendChild(cell); } } loadSalaState(); renderSala(); }
 
-function onCellDrop(e){ e.preventDefault(); const name = e.dataTransfer.getData('text/plain'); const cell = e.currentTarget; const key = `sala${currentSala}`; const idx = cell.dataset.idx;
+const BARRICAS_POR_DROP = 4;
+
+function onCellDrop(e){
+  e.preventDefault();
+  const name = e.dataTransfer.getData('text/plain');
+  const cell = e.currentTarget;
+  const key = `sala${currentSala}`;
+  const idx = cell.dataset.idx;
+
   const state = salaState[key] || {};
   const cellState = state[idx] || null;
-  if(!cellState){ // empty -> set color and count 1
-    state[idx] = { colorName: name, count: 1 };
-    salaState[key] = state; saveSalaState(); renderSalaCell(cell, state[idx]);
+
+  if(!cellState){
+    state[idx] = { colorName: name, count: BARRICAS_POR_DROP };
+    salaState[key] = state;
   } else {
-    // if same color, increment count, else ignore
-    if(cellState.colorName === name){ cellState.count++; saveSalaState(); renderSalaCell(cell, cellState); } else { alert('Esta casilla ya tiene otro color. Vacíala primero para cambiar.'); }
+    if(cellState.colorName === name){
+      cellState.count += BARRICAS_POR_DROP;
+    } else {
+      alert('Esta casilla ya tiene otro color. Vacíala primero para cambiar.');
+      return;
+    }
   }
+
+  saveSalaState();
+  renderSalaCell(cell, state[idx]);
 }
+
 
 let selectedCell = null;
 function selectCell(cell){ if(selectedCell) selectedCell.classList.remove('selected'); selectedCell = cell; selectedCell.classList.add('selected'); }
