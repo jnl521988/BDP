@@ -850,7 +850,7 @@ const paletteEl = el('palette');
 const salaGrid = el('salaGrid');
 const salaNumberLabel = el('salaNumber');
 let currentSala = 1;
-const SALA_COLS = 18; const SALA_ROWS = 9; // per requirements
+const SALA_COLS = 18; const SALA_ROWS = 10; // per requirements
 
 // initialize palette
 const paletteItems = [
