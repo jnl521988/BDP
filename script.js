@@ -1534,3 +1534,81 @@ function exportMapaVisualPDF(){
 // ASIGNAR EVENTOS NUEVOS
 if(btnJPGnew) btnJPGnew.addEventListener("click", exportMapaVisualJPG);
 if(btnPDFnew) btnPDFnew.addEventListener("click", exportMapaVisualPDF);
+// =====================================================
+// 🔐 BACKUP TOTAL APP BODEGA
+// =====================================================
+
+const BACKUP_VERSION = "BODEGA_PRO_V1";
+
+// ---------- EXPORTAR ----------
+if (el('exportBackup')) {
+  el('exportBackup').addEventListener('click', () => {
+
+    const backup = {
+      version: BACKUP_VERSION,
+      fecha: new Date().toISOString(),
+
+      mixData: localStorage.getItem('mixData'),
+      movData: localStorage.getItem('movData'),
+      bodegaData: localStorage.getItem('bodegaData'),
+      barrData: localStorage.getItem('barrData'),
+      salaState: localStorage.getItem('salaState'),
+      so2Data: localStorage.getItem('so2Data'),
+      prodData: localStorage.getItem('prodData'),
+      lacticData: localStorage.getItem('lacticData'),
+      notes: localStorage.getItem('notes')
+    };
+
+    const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `bodega_backup_${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    alert('Copia de seguridad descargada');
+  });
+}
+
+// ---------- IMPORTAR ----------
+if (el('importBackup')) {
+  el('importBackup').addEventListener('click', () => {
+    el('backupFile').click();
+  });
+}
+
+if (el('backupFile')) {
+  el('backupFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      try {
+        const data = JSON.parse(evt.target.result);
+
+        if (!data.version || data.version !== BACKUP_VERSION) {
+          alert('Archivo de copia no compatible');
+          return;
+        }
+
+        // Restaurar datos
+        Object.keys(data).forEach(key => {
+          if (key !== 'version' && key !== 'fecha' && data[key]) {
+            localStorage.setItem(key, data[key]);
+          }
+        });
+
+        alert('Copia restaurada. La app se recargará.');
+        location.reload();
+
+      } catch(err) {
+        alert('Error al cargar la copia');
+        console.error(err);
+      }
+    };
+
+    reader.readAsText(file);
+  });
+}

@@ -229,3 +229,48 @@ input[type="number"],input[type="text"],select{width:100%;padding:10px;border-ra
   padding:6px;
   border-radius:8px;
 }
+/* ===== CONTENEDOR PARA LOS BOTONES BACKUP ===== */
+.backup-row{
+  display:flex;
+  justify-content:center; /* centra el grupo */
+  gap:14px;               /* espacio entre los dos */
+  margin-top:14px;
+  flex-wrap:wrap;         /* en móvil se ponen uno debajo del otro */
+}
+
+/* ===== BOTONES BACKUP (más pequeños) ===== */
+#exportBackup,
+#importBackup{
+  width:160px;
+  padding:14px 10px;
+  font-size:14px;
+  font-weight:700;
+  border-radius:10px;
+  box-shadow:0 5px 12px rgba(0,0,0,0.15);
+  transition:transform .08s ease, box-shadow .08s ease, filter .1s;
+}
+
+/* VERDE EXPORTAR */
+#exportBackup{
+  background:linear-gradient(180deg,#2e7d32,#1b5e20);
+  color:#fff;
+}
+
+/* ROJO IMPORTAR */
+#importBackup{
+  background:linear-gradient(180deg,#c62828,#8e0000);
+  color:#fff;
+}
+
+#exportBackup:hover,
+#importBackup:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 16px rgba(0,0,0,0.18);
+  filter:brightness(1.05);
+}
+
+#exportBackup:active,
+#importBackup:active{
+  transform:translateY(0);
+  box-shadow:0 4px 8px rgba(0,0,0,0.15);
+}
