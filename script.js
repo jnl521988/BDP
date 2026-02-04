@@ -1612,3 +1612,77 @@ if (el('backupFile')) {
     reader.readAsText(file);
   });
 }
+/* ================================
+   CRIANZA AUTOMÁTICA BARRICAS
+   (VERSIÓN SIN BLOQUEOS)
+================================ */
+
+function mesesCrianza(fechaEntrada){
+  if(!fechaEntrada) return 0;
+
+  const hoy = new Date();
+  const entrada = new Date(fechaEntrada);
+
+  let meses = (hoy.getFullYear() - entrada.getFullYear()) * 12;
+  meses += hoy.getMonth() - entrada.getMonth();
+
+  const diasMesActual = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0).getDate();
+  const diffDias = hoy.getDate() - entrada.getDate();
+  const decimal = diffDias / diasMesActual;
+
+  let totalMeses = meses + decimal;
+  if(totalMeses < 0) totalMeses = 0;
+
+  return Math.round(totalMeses * 10) / 10;
+}
+
+
+function actualizarCrianzaBarricas(){
+  const filas = document.querySelectorAll("#barrTableBody tr");
+
+  filas.forEach(fila=>{
+    const fechaInput = fila.querySelector('input[type="date"]');
+    if(!fechaInput) return;
+
+    const fecha = fechaInput.value;
+    const meses = mesesCrianza(fecha);
+
+    let celda = fila.querySelector(".crianza-cell");
+
+    if(!celda){
+      celda = document.createElement("td");
+      celda.className = "crianza-cell";
+      const celdaFecha = fechaInput.closest("td");
+celdaFecha.after(celda);
+
+    }
+
+    celda.textContent = meses ? meses + "" : "";
+
+    if(meses >= 12){
+      celda.classList.add("crianza-aviso");
+    } else {
+      celda.classList.remove("crianza-aviso");
+    }
+  });
+}
+
+
+/* ---- ACTUALIZACIONES SEGURAS ---- */
+
+// Cada vez que se añade una fila de barrica
+document.getElementById("addBarrRow")?.addEventListener("click", ()=>{
+  setTimeout(actualizarCrianzaBarricas, 50);
+});
+
+// Cuando cambias una fecha
+document.addEventListener("change", e=>{
+  if(e.target.type === "date" && e.target.closest("#barrTableBody")){
+    actualizarCrianzaBarricas();
+  }
+});
+
+// Cuando entras en la pantalla
+document.getElementById("btnBarricas")?.addEventListener("click", ()=>{
+  setTimeout(actualizarCrianzaBarricas, 120);
+});

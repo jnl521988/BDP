@@ -274,3 +274,14 @@ input[type="number"],input[type="text"],select{width:100%;padding:10px;border-ra
   transform:translateY(0);
   box-shadow:0 4px 8px rgba(0,0,0,0.15);
 }
+/* ===== CRIANZA BARRICAS ===== */
+.crianza-cell{
+  font-weight:700;
+}
+
+.crianza-aviso{
+  background:#d77373;   /* ámbar */
+  color:#111;
+  font-weight:800;
+  border-radius:6px;
+}
