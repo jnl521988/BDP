@@ -1053,10 +1053,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const notesText = document.getElementById('notesText');
   const notesList = document.getElementById('notesList');
   const searchInput = document.getElementById('searchNotes');
+  const btnSearchNotes = document.getElementById('btnSearchNotes');
 
   const saveNotesBtn = document.getElementById('saveNotes');
   const clearNotesBtn = document.getElementById('clearNotes');
   const exportPDFBtn = document.getElementById('exportNotesPDF');
+
+  let editingIndex = null; // null si estamos creando nueva nota, número si estamos editando
 
   // -------------------------------
   // Funciones de almacenamiento
@@ -1075,6 +1078,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderNotes(filter = '') {
     const notes = getNotes();
     notesList.innerHTML = '';
+
     notes
       .filter(n => n.title.toLowerCase().includes(filter.toLowerCase()))
       .forEach((note, index) => {
@@ -1087,6 +1091,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <strong>${note.title}</strong>
           <div>
             <button class="view" data-index="${index}">Ver</button>
+            <button class="edit" data-index="${index}">Editar</button>
             <button class="delete" data-index="${index}">Borrar</button>
           </div>
         `;
@@ -1101,6 +1106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     homeScreen.classList.add('hidden');
     notesScreen.classList.remove('hidden');
     renderNotes();
+    clearEditor();
   });
 
   // -------------------------------
@@ -1109,29 +1115,47 @@ document.addEventListener('DOMContentLoaded', () => {
   btnBackNotes.addEventListener('click', () => {
     notesScreen.classList.add('hidden');
     homeScreen.classList.remove('hidden');
-    noteTitle.value = '';
-    notesText.value = '';
+    clearEditor();
     searchInput.value = '';
   });
 
   // -------------------------------
-  // Guardar nota
+  // Limpiar editor
+  // -------------------------------
+  function clearEditor() {
+    noteTitle.value = '';
+    notesText.value = '';
+    editingIndex = null;
+  }
+
+  // -------------------------------
+  // Guardar nota (crear o editar)
   // -------------------------------
   saveNotesBtn.addEventListener('click', () => {
     const title = noteTitle.value.trim();
     const text = notesText.value.trim();
+
     if (!title || !text) {
       alert('Título y contenido son requeridos');
       return;
     }
 
     const notes = getNotes();
-    notes.push({ title, text });
+
+    if (editingIndex !== null) {
+      // Actualizamos nota existente
+      notes[editingIndex] = { title, text };
+      editingIndex = null;
+      alert('Nota actualizada');
+    } else {
+      // Creamos nueva nota
+      notes.push({ title, text });
+      alert('Nota creada');
+    }
+
     saveNotesStorage(notes);
-    renderNotes();
-    noteTitle.value = '';
-    notesText.value = '';
-    alert('Nota guardada');
+    renderNotes(searchInput.value.trim());
+    clearEditor();
   });
 
   // -------------------------------
@@ -1139,8 +1163,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------
   clearNotesBtn.addEventListener('click', () => {
     if (confirm('¿Borrar contenido actual?')) {
-      noteTitle.value = '';
-      notesText.value = '';
+      clearEditor();
     }
   });
 
@@ -1166,45 +1189,64 @@ document.addEventListener('DOMContentLoaded', () => {
     printWindow.print();
   });
 
-  // -------------------------------
-// Buscar notas al pulsar botón
+ // -------------------------------
+// Buscar nota y cargar en editor sin ocultar todas las demás
 // -------------------------------
 btnSearchNotes.addEventListener('click', () => {
-  const filter = searchInput.value.trim().toLowerCase();
+  const filter = searchInput.value.trim();
   const notes = getNotes();
-  const note = notes.find(n => n.title.toLowerCase() === filter); // Coincidencia exacta
 
-  if (note) {
-    // Mostrar la nota completa en el editor
-    noteTitle.value = note.title;
-    notesText.value = note.text;
-  } else {
-    alert('No se encontró ninguna nota con ese título');
-    noteTitle.value = '';
-    notesText.value = '';
+  if (!filter) {
+    renderNotes(''); // Mostrar todas
+    clearEditor();
+    return;
   }
 
-  // También actualizar la lista de notas filtradas (opcional)
-  renderNotes(filter);
+  // Buscamos nota con título exacto (ignorando mayúsculas/minúsculas)
+  const index = notes.findIndex(n => n.title.toLowerCase() === filter.toLowerCase());
+
+  if (index !== -1) {
+    // Cargamos la nota en el editor y activamos modo edición
+    noteTitle.value = notes[index].title;
+    notesText.value = notes[index].text;
+    editingIndex = index; // ahora al guardar actualizará esta nota
+  } else {
+    alert('No se encontró ninguna nota con ese título');
+    clearEditor();
+  }
+
+  // Actualizamos la lista **sin ocultar todo**, marcando coincidencias si quieres
+  renderNotes(); // muestra todas las notas
 });
 
 
   // -------------------------------
-  // Ver y borrar notas de la lista
+  // Ver, Editar y Borrar notas
   // -------------------------------
   notesList.addEventListener('click', (e) => {
     const index = e.target.dataset.index;
+    if (index === undefined) return;
+
+    const notes = getNotes();
+
     if (e.target.classList.contains('view')) {
-      const note = getNotes()[index];
-      noteTitle.value = note.title;
-      notesText.value = note.text;
+      noteTitle.value = notes[index].title;
+      notesText.value = notes[index].text;
+      editingIndex = null; // solo visualización
     }
+
+    if (e.target.classList.contains('edit')) {
+      noteTitle.value = notes[index].title;
+      notesText.value = notes[index].text;
+      editingIndex = parseInt(index); // modo edición activo
+    }
+
     if (e.target.classList.contains('delete')) {
       if (confirm('¿Borrar esta nota?')) {
-        const notes = getNotes();
         notes.splice(index, 1);
         saveNotesStorage(notes);
-        renderNotes();
+        renderNotes(searchInput.value.trim());
+        clearEditor();
       }
     }
   });
@@ -1685,4 +1727,85 @@ document.addEventListener("change", e=>{
 // Cuando entras en la pantalla
 document.getElementById("btnBarricas")?.addEventListener("click", ()=>{
   setTimeout(actualizarCrianzaBarricas, 120);
+});
+
+// CREA O SELECCIONA EL PANEL DE TOTALES
+let panelTotales = document.getElementById('panel-totales-barricas');
+if(!panelTotales){
+  panelTotales = document.createElement('div');
+  panelTotales.id = 'panel-totales-barricas';
+  const salaMain = document.querySelector('.sala-main');
+  if(salaMain) salaMain.appendChild(panelTotales);
+}
+
+// Totales individuales
+let totalSalaActualEl = document.getElementById('total-sala-actual');
+if(!totalSalaActualEl){
+  totalSalaActualEl = document.createElement('div');
+  totalSalaActualEl.id = 'total-sala-actual';
+  panelTotales.appendChild(totalSalaActualEl);
+}
+
+let totalGlobalEl = document.getElementById('total-global');
+if(!totalGlobalEl){
+  totalGlobalEl = document.createElement('div');
+  totalGlobalEl.id = 'total-global';
+  panelTotales.appendChild(totalGlobalEl);
+}
+
+// Función que calcula totales
+function updateTotalesBarricas(){
+  let totalSalaActual = 0;
+  const keyActual = `sala${currentSala}`;
+  const stateActual = salaState[keyActual] || {};
+  for(const idx in stateActual){
+    totalSalaActual += stateActual[idx].count || 0;
+  }
+  totalSalaActualEl.textContent = `Total Sala ${currentSala}: ${totalSalaActual} Barricas`;
+
+  // Total global sumando todas las salas
+  let totalGlobal = 0;
+  for(let i=1;i<=3;i++){
+    const state = salaState[`sala${i}`] || {};
+    for(const idx in state){
+      totalGlobal += state[idx].count || 0;
+    }
+  }
+  totalGlobalEl.textContent = `Total (3 Salas): ${totalGlobal} Barricas`;
+}
+
+// Actualiza automáticamente al renderizar sala
+function renderSalaConTotales(){
+  renderSala();
+  updateTotalesBarricas();
+}
+
+// Sobrescribimos el cambio de sala para usar la función con totales
+qsa('.sala-btn').forEach(b=>{
+  b.addEventListener('click', (e)=>{
+    currentSala = parseInt(e.target.dataset.sala);
+    renderSalaConTotales();
+  });
+});
+
+// También actualiza al modificar celdas
+function actualizarTodo(){
+  renderSalaConTotales();
+}
+
+// Llamadas a updateTotalesBarricas después de cambios
+// Al hacer drop
+const originalOnCellDrop = onCellDrop;
+onCellDrop = function(e){
+  originalOnCellDrop(e);
+  updateTotalesBarricas();
+};
+
+// Al quitar o limpiar
+if(el('clearCell')) el('clearCell').addEventListener('click', actualizarTodo);
+if(el('removeOne')) el('removeOne').addEventListener('click', actualizarTodo);
+
+// Inicializa al cargar
+window.addEventListener('DOMContentLoaded', ()=>{
+  updateTotalesBarricas();
 });

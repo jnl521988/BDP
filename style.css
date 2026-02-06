@@ -285,3 +285,23 @@ input[type="number"],input[type="text"],select{width:100%;padding:10px;border-ra
   font-weight:800;
   border-radius:6px;
 }
+
+/* Panel de totales debajo de la cuadrícula */
+#panel-totales-barricas {
+  display:flex;
+  flex-direction:column;
+  align-items:center; /* centra los totales */
+  justify-content:center;
+  margin-top:6px;      /* separación de la cuadrícula */
+  padding:6px 0;       /* poco padding, para no crear rectángulo grande */
+  background:transparent; /* elimina rectángulo blanco */
+  border:none;         /* opcional, elimina borde si no quieres línea */
+  font-weight:700;
+  gap:4px;             /* separa los totales entre sí */
+}
+
+/* Totales individuales */
+#total-sala-actual, #total-global {
+  font-size:16px;
+  text-align:center;
+}
