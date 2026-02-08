@@ -83,7 +83,8 @@
   <div class="card">
     <div class="controls">
       <button id="addMovRow" class="small">Añadir Fila</button>
-      <button id="sendSelected" class="small">Enviar selección</button>
+      <button id="sendSelected" class="small">Enviar Selección</button>
+      <button id="deleteSelected" class="small">Eliminar Selección</button>
       <div class="inline-info">Filas: <strong><span id="movCount">0</span></strong></div>
       <div style="margin-left:10px"><button id="gen300" class="small">Generar hasta 400</button></div>
     </div>
@@ -237,8 +238,8 @@
         <button class="small sala-btn" data-sala="3">Sala 3 (Nave Placas)</button>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-        <button id="exportSalaJPG" class="small">Exportar JPG</button>
-        <button id="exportSalaPDF" class="small">Exportar PDF</button>
+        <button id="exportSalaJPG" class="small">Exportar Sala JPG</button>
+         <button id="exportSalaPDF" class="small">Exportar Sala PDF</button>
         <button id="clearSala" class="small">Borrar Sala</button>
       </div>
     </div>
@@ -248,7 +249,7 @@
         <h4>Panel de Barricas (arrastrar)</h4>
         <div id="palette" class="palette"></div>
         <div style="margin-top:10px">
-          <button id="clearCell" class="small">Vaciar casilla</button>
+          <button id="clearCell" class="small">Vaciar Casilla</button>
         <button id="removeOne" class="small">Quitar 1</button>
         </div>
       </aside>
@@ -375,6 +376,9 @@
 <script src="script.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- jsPDF librería -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
 
 
 <!-- BLOCKS DE NOTAS -->

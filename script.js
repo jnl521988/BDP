@@ -426,6 +426,24 @@ if (el('sendSelected')) el('sendSelected').addEventListener('click', () => {
   saveMov();
 });
 
+if(el('deleteSelected')) el('deleteSelected').addEventListener('click', () => {
+    if(!movBody) return;
+
+    const selected = [...movBody.querySelectorAll('tr')]
+        .filter(tr => tr.querySelector('.movSel')?.checked);
+
+    if(selected.length === 0){
+        alert('No hay filas seleccionadas para eliminar.');
+        return;
+    }
+
+    if(!confirm(`¿Deseas eliminar ${selected.length} fila(s) seleccionadas?`)) return;
+
+    selected.forEach(tr => tr.remove());
+    renumberMov(); // actualiza numeración y contador
+    saveMov();     // guarda cambios
+});
+
 
 function updateControlsState(){ /* placeholder for enabling/disabling buttons if needed */ }
 
@@ -918,21 +936,80 @@ if(el('clearCell')) el('clearCell').addEventListener('click', ()=>{ if(!selected
 // Quitar 1 barrica de la casilla seleccionada
 if(el('removeOne')) el('removeOne').addEventListener('click', ()=>{ if(!selectedCell) return; const key = `sala${currentSala}`; const idx = selectedCell.dataset.idx; const st = salaState[key] && salaState[key][idx]; if(!st) return; st.count = (st.count||0) - 1; if(st.count <= 0){ delete salaState[key][idx]; } else { salaState[key][idx] = st; } saveSalaState(); renderSala(); });
 
-// export sala grid (only grid) to JPG
-function exportSalaGridAsJPG(){ const grid = salaGrid; if(!grid) return; // serialize as SVG or render via html2canvas not available; we'll create simple SVG
-  const cellW = 48; const cellH = 48; const cols = SALA_COLS; const rows = SALA_ROWS; const width = cols * (cellW + 6) + 20; const height = rows * (cellH + 6) + 40; let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`;
+/*** EXPORTACIÓN SALA DE BARRICAS JPG ***/
+function exportSalaCompletaJPG(){
+  const key = `sala${currentSala}`;
+  const state = salaState[key] || {};
+
+  // Totales
+  let totalSala = 0;
+  Object.values(state).forEach(c => totalSala += c.count || 0);
+
+  let totalGlobal = 0;
+  Object.values(salaState).forEach(s => {
+    Object.values(s).forEach(c => totalGlobal += c.count || 0);
+  });
+
+  // Medidas
+  const cellW = 48, cellH = 48, cols = SALA_COLS, rows = SALA_ROWS;
+  const gridW = cols*(cellW+6)+20;
+  const gridH = rows*(cellH+6)+40;
+  const lateralW = 220;
+  const width = gridW + lateralW + 40;
+  const height = gridH + 180;
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`;
   svg += `<rect width="100%" height="100%" fill="#ffffff"/>`;
-  const key = `sala${currentSala}`; const state = salaState[key] || {};
+
+  // Título
+  svg += `<text x="${width/2}" y="40" font-size="28" text-anchor="middle" font-weight="bold">SALA ${currentSala}</text>`;
+
+  // Cuadrícula
   for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
-      const idx = r*cols + c; const x = 10 + c*(cellW+6); const y = 10 + r*(cellH+6); const st = state[idx]; const fill = st ? (colorMap[st.colorName]||'#ddd') : '#f7f7f8'; svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="6" ry="6" fill="${fill}" stroke="#ddd"/>`; if(st){ svg += `<text x="${x+cellW/2}" y="${y+cellH/2}" font-size="10" text-anchor="middle" alignment-baseline="middle" fill="#fff">${st.count}</text>`; } }
+      const idx = r*cols+c;
+      const x = 20+c*(cellW+6);
+      const y = 70+r*(cellH+6);
+      const st = state[idx];
+      const fill = st ? (colorMap[st.colorName] || '#ddd') : '#f7f7f8';
+      svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="6" fill="${fill}" stroke="#ddd"/>`;
+      if(st) svg += `<text x="${x+cellW/2}" y="${y+cellH/2}" font-size="12" text-anchor="middle" alignment-baseline="middle" fill="#fff">${st.count}</text>`;
+    }
   }
+
+  // Panel lateral
+  let yL = 80;
+  svg += `<text x="${gridW+30}" y="70" font-size="18" font-weight="bold">Barricas</text>`;
+  paletteItems.forEach(p => {
+    svg += `<rect x="${gridW+30}" y="${yL}" width="20" height="20" fill="${colorMap[p.name] || '#999'}"/>`;
+    svg += `<text x="${gridW+60}" y="${yL+15}" font-size="14">${p.label}</text>`;
+    yL += 28;
+  });
+
+  // Totales
+  svg += `<rect x="0" y="${gridH+90}" width="${width}" height="70" fill="#e9ecef"/>`;
+  svg += `<text x="${width/2}" y="${gridH+120}" font-size="20" text-anchor="middle" font-weight="bold">Total Sala ${currentSala}: ${totalSala} barricas</text>`;
+  svg += `<text x="${width/2}" y="${gridH+145}" font-size="18" text-anchor="middle">Total Bodega (3 salas): ${totalGlobal} barricas</text>`;
+
   svg += `</svg>`;
-  const svg64 = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); const img = new Image(); img.onload = function(){ const canvas=document.createElement('canvas'); canvas.width = img.width; canvas.height = img.height; const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.drawImage(img,0,0); const dataURL = canvas.toDataURL('image/jpeg', 0.95); const link=document.createElement('a'); link.href=dataURL; link.download=`sala${currentSala}.jpg`; document.body.appendChild(link); link.click(); link.remove(); };
-  img.src = svg64;
+
+  const img = new Image();
+  img.onload = function(){
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    canvas.getContext('2d').drawImage(img,0,0);
+    const link = document.createElement('a');
+    link.download = `Sala_${currentSala}.jpg`;
+    link.href = canvas.toDataURL('image/jpeg',0.95);
+    link.click();
+  };
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
-if(el('exportSalaJPG')) el('exportSalaJPG').addEventListener('click', exportSalaGridAsJPG);
-if(el('exportSalaPDF')) el('exportSalaPDF').addEventListener('click', ()=>{ const key = `sala${currentSala}`; const state = salaState[key] || {}; const svgStr = (function(){ const cellW = 48; const cellH = 48; const cols = SALA_COLS; const rows = SALA_ROWS; const width = cols * (cellW + 6) + 20; const height = rows * (cellH + 6) + 40; let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`; svg += `<rect width="100%" height="100%" fill="#ffffff"/>`; for(let r=0;r<rows;r++){ for(let c=0;c<cols;c++){ const idx = r*cols + c; const x = 10 + c*(cellW+6); const y = 10 + r*(cellH+6); const st = state[idx]; const fill = st ? (colorMap[st.colorName]||'#ddd') : '#f7f7f8'; svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="6" ry="6" fill="${fill}" stroke="#ddd"/>`; if(st){ svg += `<text x="${x+cellW/2}" y="${y+cellH/2}" font-size="10" text-anchor="middle" alignment-baseline="middle" fill="#fff">${st.count}</text>`; } } } svg += `</svg>`; return svg; })(); const html = `<h2>Sala ${currentSala}</h2>${svgStr}`; openPrint(html); });
+
+// ASIGNAR EVENTO AL BOTÓN JPG
+if(el('exportSalaJPG')) el('exportSalaJPG').addEventListener('click', exportSalaCompletaJPG);
+
 
 // load and build sala grid
 window.addEventListener('DOMContentLoaded', ()=>{ buildSalaGrid(); loadAll(); });
@@ -1075,29 +1152,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // -------------------------------
   // Renderizar lista de notas
   // -------------------------------
-  function renderNotes(filter = '') {
-    const notes = getNotes();
-    notesList.innerHTML = '';
+  function renderNotes(filter = '', highlightIndex = null) {
+  const notes = getNotes();
+  notesList.innerHTML = '';
 
-    notes
-      .filter(n => n.title.toLowerCase().includes(filter.toLowerCase()))
-      .forEach((note, index) => {
-        const div = document.createElement('div');
-        div.classList.add('note-item');
-        div.style.display = 'flex';
-        div.style.justifyContent = 'space-between';
-        div.style.marginBottom = '5px';
-        div.innerHTML = `
-          <strong>${note.title}</strong>
-          <div>
-            <button class="view" data-index="${index}">Ver</button>
-            <button class="edit" data-index="${index}">Editar</button>
-            <button class="delete" data-index="${index}">Borrar</button>
-          </div>
-        `;
-        notesList.appendChild(div);
-      });
-  }
+  notes
+    .filter(n => n.title.toLowerCase().includes(filter.toLowerCase()))
+    .forEach((note, index) => {
+      const div = document.createElement('div');
+      div.classList.add('note-item');
+
+      if(index === highlightIndex){
+        div.classList.add('highlight');
+      }
+
+      div.style.display = 'flex';
+      div.style.justifyContent = 'space-between';
+      div.style.marginBottom = '5px';
+
+      div.innerHTML = `
+        <strong>${note.title}</strong>
+        <div>
+          <button class="view" data-index="${index}">Ver</button>
+          <button class="edit" data-index="${index}">Editar</button>
+          <button class="delete" data-index="${index}">Borrar</button>
+        </div>
+      `;
+      notesList.appendChild(div);
+    });
+}
 
   // -------------------------------
   // Abrir Block de Notas desde la página principal
@@ -1197,26 +1280,24 @@ btnSearchNotes.addEventListener('click', () => {
   const notes = getNotes();
 
   if (!filter) {
-    renderNotes(''); // Mostrar todas
+    renderNotes('');
     clearEditor();
     return;
   }
 
-  // Buscamos nota con título exacto (ignorando mayúsculas/minúsculas)
   const index = notes.findIndex(n => n.title.toLowerCase() === filter.toLowerCase());
 
   if (index !== -1) {
-    // Cargamos la nota en el editor y activamos modo edición
     noteTitle.value = notes[index].title;
     notesText.value = notes[index].text;
-    editingIndex = index; // ahora al guardar actualizará esta nota
+    editingIndex = index;
+
+    renderNotes('', index); // 👈 AQUÍ MARCAMOS LA NOTA
   } else {
     alert('No se encontró ninguna nota con ese título');
     clearEditor();
+    renderNotes();
   }
-
-  // Actualizamos la lista **sin ocultar todo**, marcando coincidencias si quieres
-  renderNotes(); // muestra todas las notas
 });
 
 
@@ -1576,6 +1657,8 @@ function exportMapaVisualPDF(){
 // ASIGNAR EVENTOS NUEVOS
 if(btnJPGnew) btnJPGnew.addEventListener("click", exportMapaVisualJPG);
 if(btnPDFnew) btnPDFnew.addEventListener("click", exportMapaVisualPDF);
+
+
 // =====================================================
 // 🔐 BACKUP TOTAL APP BODEGA
 // =====================================================
@@ -1701,11 +1784,15 @@ celdaFecha.after(celda);
 
     celda.textContent = meses ? meses + "" : "";
 
-    if(meses >= 12){
-      celda.classList.add("crianza-aviso");
-    } else {
-      celda.classList.remove("crianza-aviso");
-    }
+    // Limpiamos estados anteriores
+celda.classList.remove("crianza-aviso", "crianza-peligro");
+
+if (meses >= 20) {
+  celda.classList.add("crianza-peligro");   // 🔴 MUY PASADA
+} else if (meses >= 12) {
+  celda.classList.add("crianza-aviso");     // 🟠 PASADA
+}
+
   });
 }
 
@@ -1809,3 +1896,78 @@ if(el('removeOne')) el('removeOne').addEventListener('click', actualizarTodo);
 window.addEventListener('DOMContentLoaded', ()=>{
   updateTotalesBarricas();
 });
+
+/*** EXPORTAR SALA DE BARRICAS A PDF ***/
+function exportSalaCompletaPDF(){
+    // Crear un div temporal que contenga el SVG de la sala (igual que en JPG)
+    const key = `sala${currentSala}`;
+    const state = salaState[key] || {};
+
+    let totalSala = 0;
+    Object.values(state).forEach(c => totalSala += c.count || 0);
+
+    let totalGlobal = 0;
+    Object.values(salaState).forEach(s => {
+        Object.values(s).forEach(c => totalGlobal += c.count || 0);
+    });
+
+    // Medidas
+    const cellW = 48, cellH = 48, cols = SALA_COLS, rows = SALA_ROWS;
+    const gridW = cols*(cellW+6)+20;
+    const gridH = rows*(cellH+6)+40;
+    const lateralW = 220;
+    const width = gridW + lateralW + 40;
+    const height = gridH + 180;
+
+    // Crear el SVG
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">`;
+    svg += `<rect width="100%" height="100%" fill="#ffffff"/>`;
+    svg += `<text x="${width/2}" y="40" font-size="28" text-anchor="middle" font-weight="bold">SALA ${currentSala}</text>`;
+
+    for(let r=0; r<rows; r++){
+        for(let c=0; c<cols; c++){
+            const idx = r*cols + c;
+            const x = 20 + c*(cellW+6);
+            const y = 70 + r*(cellH+6);
+            const st = state[idx];
+            const fill = st ? (colorMap[st.colorName]||'#ddd') : '#f7f7f8';
+            svg += `<rect x="${x}" y="${y}" width="${cellW}" height="${cellH}" rx="6" fill="${fill}" stroke="#ddd"/>`;
+            if(st) svg += `<text x="${x+cellW/2}" y="${y+cellH/2}" font-size="12" text-anchor="middle" alignment-baseline="middle" fill="#fff">${st.count}</text>`;
+        }
+    }
+
+    let yL = 80;
+    svg += `<text x="${gridW+30}" y="70" font-size="18" font-weight="bold">Barricas</text>`;
+    paletteItems.forEach(p=>{
+        svg += `<rect x="${gridW+30}" y="${yL}" width="20" height="20" fill="${colorMap[p.name]||'#999'}"/>`;
+        svg += `<text x="${gridW+60}" y="${yL+15}" font-size="14">${p.label}</text>`;
+        yL += 28;
+    });
+
+    svg += `<rect x="0" y="${gridH+90}" width="${width}" height="70" fill="#e9ecef"/>`;
+    svg += `<text x="${width/2}" y="${gridH+120}" font-size="20" text-anchor="middle" font-weight="bold">Total Sala ${currentSala}: ${totalSala} barricas</text>`;
+    svg += `<text x="${width/2}" y="${gridH+145}" font-size="18" text-anchor="middle">Total Bodega (3 salas): ${totalGlobal} barricas</text>`;
+    svg += `</svg>`;
+
+    // Insertarlo en un div temporal para html2canvas
+    const tempDiv = document.createElement('div');
+    tempDiv.style.position = 'absolute';
+    tempDiv.style.left = '-9999px';
+    tempDiv.innerHTML = svg;
+    document.body.appendChild(tempDiv);
+
+    html2canvas(tempDiv, { backgroundColor:"#ffffff", scale:2 }).then(canvas=>{
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('landscape');
+        pdf.addImage(imgData, 'JPEG', 10, 10, 270, 160);
+        pdf.save(`Sala_${currentSala}.pdf`);
+        document.body.removeChild(tempDiv);
+    }).catch(e=>{
+        alert("Error al generar PDF: " + e.message);
+        document.body.removeChild(tempDiv);
+    });
+}
+
+// ASIGNAR EVENTO AL BOTÓN PDF DE SALA
+if(el('exportSalaPDF')) el('exportSalaPDF').addEventListener('click', exportSalaCompletaPDF);

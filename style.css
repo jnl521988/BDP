@@ -285,23 +285,37 @@ input[type="number"],input[type="text"],select{width:100%;padding:10px;border-ra
   font-weight:800;
   border-radius:6px;
 }
+.crianza-peligro{
+  background:#8b1e1e;  /* rojo oscuro potente */
+  color:#fff;
+  font-weight:900;
+  border-radius:6px;
+}
+
 
 /* Panel de totales debajo de la cuadrícula */
 #panel-totales-barricas {
-  display:flex;
-  flex-direction:column;
-  align-items:center; /* centra los totales */
-  justify-content:center;
-  margin-top:6px;      /* separación de la cuadrícula */
-  padding:6px 0;       /* poco padding, para no crear rectángulo grande */
-  background:transparent; /* elimina rectángulo blanco */
-  border:none;         /* opcional, elimina borde si no quieres línea */
-  font-weight:700;
-  gap:4px;             /* separa los totales entre sí */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 6px;
+  padding: 8px 0;
+
+  background-color: #efe6d6;   /* ← COLOR DEL BLOQUE GRANDE */
+  border: 2px solid #8e2a2a;    /* marco vino elegante */
+  border-radius: 10px;
 }
+
 
 /* Totales individuales */
 #total-sala-actual, #total-global {
   font-size:16px;
   text-align:center;
+}
+
+.note-item.highlight{
+  background:#ffeaa7;
+  border-radius:6px;
+  padding:2px 4px;
 }
