@@ -46,10 +46,10 @@ const colorMap = {
   'ABRACADABRA-2':'#1f2933',
   'PLATON-1':'#4b5563',
   'PLATON-2':'#9ca3af',
-  'DIVINA':'#982787eb',
-  'ROSADO':'#ff69b4',
+  'DIVINA-1':'#982787eb',
+  'DIVINA-2':'#e333d7',
   'LOQUILLO':'#531c74ff',
-  'ELPRINCIPITO':'#ded51eff',
+  'EL PRINCIPITO':'rgb(219, 210, 34)',
   '300':'#7f4916ff',
   '500':'#36832aff'
 };
@@ -166,6 +166,10 @@ function renderMovAction(tr){
     });
 
     btnDel.addEventListener('click', () => {
+      const currState = stateCell.textContent.trim().toLowerCase();
+      if(currState === 'enviado'){
+        revertMoveFromBodega(tr);
+      }
       tr.remove();
       renumberMov();
       saveMov();
@@ -197,11 +201,16 @@ function renderMovAction(tr){
   });
 
   btnDel2.addEventListener('click', () => {
+    const currState = stateCell.textContent.trim().toLowerCase();
+    if(currState === 'enviado'){
+      revertMoveFromBodega(tr);
+    }
     tr.remove();
     renumberMov();
     saveMov();
   });
 }
+
 
 
 function applyMoveToBodega(tr){
@@ -214,7 +223,7 @@ function applyMoveToBodega(tr){
 
     const rows = [...bBody.querySelectorAll('tr')];
 
-    // 🔁 Barricas → Barricas (no afecta bodega, pero se considera válido)
+    // 🔁 Barricas → Barricas
     if (origVal === 'barricas' && destVal === 'barricas') {
       return true;
     }
@@ -236,6 +245,7 @@ function applyMoveToBodega(tr){
       rowDest.querySelector('.volAct').value = (volDest + liters).toFixed(0);
       calcBodegaTotals();
       attachVolActHandlers();
+      saveMov();
       return true;
     }
 
@@ -246,13 +256,20 @@ function applyMoveToBodega(tr){
       if (!rowOrig) return false;
 
       const volOrig = parseFloat(rowOrig.querySelector('.volAct').value) || 0;
-      rowOrig.querySelector('.volAct').value = Math.max(0, volOrig - liters).toFixed(0);
+
+      if (liters > volOrig) {
+        alert(`Movimiento cancelado: el depósito ${orig} no tiene litros suficientes.`);
+        return false;
+      }
+
+      rowOrig.querySelector('.volAct').value = (volOrig - liters).toFixed(0);
       calcBodegaTotals();
       attachVolActHandlers();
+      saveMov();
       return true;
     }
 
-    // 🍷 Depósito → Depósito (normal)
+    // 🍷 Depósito → Depósito
     const orig = parseInt(origVal);
     const dest = parseInt(destVal);
     const rowOrig = rows[orig - 1];
@@ -263,31 +280,25 @@ function applyMoveToBodega(tr){
     const volDest = parseFloat(rowDest.querySelector('.volAct').value) || 0;
     const capDest = parseFloat(rowDest.querySelector('.cap').value) || 0;
 
+    // validar litros suficientes en origen
+    if (liters > volOrig) {
+      alert(`Movimiento cancelado: el depósito ${orig} solo tiene ${volOrig} L.`);
+      return false;
+    }
+
+    // validar capacidad destino
     if (volDest + liters > capDest) {
       alert(`Movimiento cancelado: el depósito ${dest} superaría su capacidad.`);
       return false;
     }
-/* 🚨 NUEVO: Validar que el depósito origen tenga suficientes litros */
-if (liters > volOrig) {
-  alert(`Movimiento cancelado:
-Intentas mover ${liters} L desde el depósito ${orig},
-pero solo tiene ${volOrig} L disponibles.`);
-  return false;
-}
 
-/* 🚨 Ya existente: validar capacidad del destino */
-if (volDest + liters > capDest) {
-  alert(`Movimiento cancelado: el depósito ${dest} superaría su capacidad.`);
-  return false;
-}
-
-/* ✔️ Si todo es correcto, aplicar el movimiento */
-rowOrig.querySelector('.volAct').value = Math.max(0, volOrig - liters).toFixed(0);
-rowDest.querySelector('.volAct').value = (volDest + liters).toFixed(0);
-    rowOrig.querySelector('.volAct').value = Math.max(0, volOrig - liters).toFixed(0);
+    // aplicar movimiento
+    rowOrig.querySelector('.volAct').value = (volOrig - liters).toFixed(0);
     rowDest.querySelector('.volAct').value = (volDest + liters).toFixed(0);
+
     calcBodegaTotals();
     attachVolActHandlers();
+    saveMov();
     return true;
 
   } catch(e){
@@ -295,6 +306,7 @@ rowDest.querySelector('.volAct').value = (volDest + liters).toFixed(0);
     return false;
   }
 }
+
 
 
 function revertMoveFromBodega(tr){
@@ -322,6 +334,7 @@ function revertMoveFromBodega(tr){
       rowDest.querySelector('.volAct').value = Math.max(0, volDest - liters).toFixed(0);
       calcBodegaTotals();
       attachVolActHandlers();
+      saveMov();
       return;
     }
 
@@ -335,6 +348,7 @@ function revertMoveFromBodega(tr){
       rowOrig.querySelector('.volAct').value = (volOrig + liters).toFixed(0);
       calcBodegaTotals();
       attachVolActHandlers();
+      saveMov();
       return;
     }
 
@@ -352,6 +366,7 @@ function revertMoveFromBodega(tr){
     rowDest.querySelector('.volAct').value = Math.max(0, volDest - liters).toFixed(0);
     calcBodegaTotals();
     attachVolActHandlers();
+    saveMov();
 
   } catch(e){
     console.error(e);
@@ -439,10 +454,21 @@ if(el('deleteSelected')) el('deleteSelected').addEventListener('click', () => {
 
     if(!confirm(`¿Deseas eliminar ${selected.length} fila(s) seleccionadas?`)) return;
 
-    selected.forEach(tr => tr.remove());
-    renumberMov(); // actualiza numeración y contador
-    saveMov();     // guarda cambios
+    selected.forEach(tr => {
+        const state = tr.querySelector('.movState').textContent.trim().toLowerCase();
+
+        // 👉 SI EL MOVIMIENTO YA ESTABA ENVIADO, REVERTIR PRIMERO
+        if(state === 'enviado'){
+            revertMoveFromBodega(tr);
+        }
+
+        tr.remove();
+    });
+
+    renumberMov(); // esto solo reordena números visuales
+    saveMov();
 });
+
 
 
 function updateControlsState(){ /* placeholder for enabling/disabling buttons if needed */ }
@@ -542,6 +568,12 @@ function calcBodegaTotals(){
       const H = Math.pow(10,-p);
       sumH += H*v;
       volH += v;
+    }
+    // 🔹 Resaltar fila si el volumen actual es 0
+    if(v === 0){
+      r.style.backgroundColor = '#e3bbbb'; // rojo claro
+    } else {
+      r.style.backgroundColor = ''; // fondo normal
     }
   });
 
@@ -667,6 +699,7 @@ function addBarrRow(count = 1, type = 225, anyada = 2022, fecha = '', color = ''
         <option value="225">225</option>
         <option value="300">300</option>
         <option value="500">500</option>
+        <option value="2000">2000</option>
       </select>
     </td>
     <td class="b_total">0</td>
@@ -876,7 +909,7 @@ const paletteItems = [
   {name:'MADREMIA-1',label:'MM1'},{name:'MADREMIA-2',label:'MM2'},{name:'MADREMIA-3',label:'MM3'},{name:'MADREMIA-4',label:'MM4'},
   {name:'ABRACADABRA-1',label:'AB1'},{name:'ABRACADABRA-2',label:'AB2'},
   {name:'PLATON-1',label:'PL1'},{name:'PLATON-2',label:'PL2'},
-  {name:'DIVINA',label:'DV'},{name:'ROSADO',label:'RS'},{name:'LOQUILLO',label:'LQ'},{name:'EL PRINCIPITO',label:'EP'},
+  {name:'DIVINA-1',label:'DV1'},{name:'DIVINA-2',label:'DV2'},{name:'LOQUILLO',label:'LQ'},{name:'EL PRINCIPITO',label:'EP'},
   {name:'300',label:'300'},{name:'500',label:'500'}
 ];
 
@@ -1272,33 +1305,51 @@ document.addEventListener('DOMContentLoaded', () => {
     printWindow.print();
   });
 
- // -------------------------------
-// Buscar nota y cargar en editor sin ocultar todas las demás
+// -------------------------------
+// Buscar nota y cargar en editor con resaltado
 // -------------------------------
 btnSearchNotes.addEventListener('click', () => {
-  const filter = searchInput.value.trim();
+  const filter = searchInput.value.trim().toLowerCase();
   const notes = getNotes();
 
+  // Limpiar panel y resaltado si buscador está vacío
   if (!filter) {
-    renderNotes('');
     clearEditor();
+    renderNotes();
     return;
   }
 
-  const index = notes.findIndex(n => n.title.toLowerCase() === filter.toLowerCase());
+  // Buscar coincidencia exacta por título
+  const index = notes.findIndex(n => n.title.toLowerCase() === filter);
+
+  // Renderizamos todas las notas
+  renderNotes();
 
   if (index !== -1) {
+    // Cargar en panel de escritura
     noteTitle.value = notes[index].title;
     notesText.value = notes[index].text;
     editingIndex = index;
 
-    renderNotes('', index); // 👈 AQUÍ MARCAMOS LA NOTA
+    // Resaltar la nota encontrada
+    const noteDivs = notesList.querySelectorAll('.note-item');
+    if (noteDivs[index]) noteDivs[index].classList.add('highlight');
   } else {
-    alert('No se encontró ninguna nota con ese título');
     clearEditor();
-    renderNotes();
+    alert('No se encontró ninguna nota con ese título');
   }
 });
+
+// -------------------------------
+// Escuchar cambios en el buscador para limpiar panel al borrar
+// -------------------------------
+searchInput.addEventListener('input', () => {
+  if (searchInput.value.trim() === '') {
+    clearEditor();
+    renderNotes(); // quita resaltado
+  }
+});
+
 
 
   // -------------------------------
@@ -1322,14 +1373,16 @@ btnSearchNotes.addEventListener('click', () => {
       editingIndex = parseInt(index); // modo edición activo
     }
 
-    if (e.target.classList.contains('delete')) {
-      if (confirm('¿Borrar esta nota?')) {
-        notes.splice(index, 1);
-        saveNotesStorage(notes);
-        renderNotes(searchInput.value.trim());
-        clearEditor();
-      }
-    }
+   if (e.target.classList.contains('delete')) {
+  if (confirm('¿Borrar esta nota?')) {
+    notes.splice(index, 1);
+    saveNotesStorage(notes);
+    searchInput.value = ''; // 👈 limpiar input de búsqueda
+    renderNotes();          // 👈 renderizar toda la lista actualizada
+    clearEditor();          // 👈 limpiar panel de escritura
+  }
+}
+
   });
 
   // Inicializar lista al cargar
