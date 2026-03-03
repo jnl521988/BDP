@@ -60,19 +60,29 @@ const mixTotal = el('mixTotal');
 const mixResults = el('mixResults');
 let lastMixVolume = 0;
 function makeDepositSelect(){ return [...Array(23)].map((_,i)=>`<option value="${i+1}">${i+1}</option>`).join(''); }
-function addMixRow(dep='', vol='', grad='', ph='', aci=''){ if(!mixBody) return; const tr=document.createElement('tr'); tr.innerHTML = `
-  <td><select class="mixDep">${makeDepositSelect()}</select></td>
-  <td class="mixPct">0%</td>
-  <td><input class="mixVol" type="number" step="0.001" value="${vol}"></td>
-  <td><input class="mixGrad" type="number" step="0.01" value="${grad}"></td>
-  <td><input class="mixPh" type="number" step="0.01" value="${ph}"></td>
-  <td><input class="mixAci" type="number" step="0.01" value="${aci}"></td>
-  <td><button class="small delMix">Eliminar</button></td>
-`;
- mixBody.appendChild(tr); tr.querySelector('.delMix').addEventListener('click', ()=>{ tr.remove(); updateMixTotals(); }); tr.querySelector('.mixVol').addEventListener('input', updateMixTotals); if(dep) tr.querySelector('.mixDep').value = dep; }
-if (el('addMixRow')) el('addMixRow').addEventListener('click', ()=> addMixRow());
-if (mixBody && mixBody.children.length === 0){ addMixRow('1',1000,13.5,3.45,5.6); addMixRow('2',2000,12.0,3.20,6.2); }
-updateMixTotals();
+function addMixRow(dep='', vol='', grad='', ph='', aci='', caract='') {
+  if(!mixBody) return;
+
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><select class="mixDep">${makeDepositSelect()}</select></td>
+    <td class="mixPct">0%</td>
+    <td><input class="mixVol" type="number" step="0.001" value="${vol}"></td>
+    <td><input class="mixGrad" type="number" step="0.01" value="${grad}"></td>
+    <td><input class="mixPh" type="number" step="0.01" value="${ph}"></td>
+    <td><input class="mixAci" type="number" step="0.01" value="${aci}"></td>
+    <td><input class="mixCaract" type="text" value="${caract || ''}"></td> <!-- nueva columna -->
+    <td><button class="small delMix">Eliminar</button></td>
+  `;
+  
+  mixBody.appendChild(tr);
+
+  // Eventos
+  tr.querySelector('.delMix').addEventListener('click', ()=>{ tr.remove(); updateMixTotals(); });
+  tr.querySelector('.mixVol').addEventListener('input', updateMixTotals);
+
+  if(dep) tr.querySelector('.mixDep').value = dep;
+}
 function updateMixTotals(){ if(!mixBody) return; const vols=[...mixBody.querySelectorAll('.mixVol')].map(i=>parseFloat(i.value)||0); const total=vols.reduce((a,b)=>a+b,0); if(mixTotal) mixTotal.textContent = total.toFixed(0); lastMixVolume = total; [...mixBody.querySelectorAll('tr')].forEach((r,i)=>{ const pct = total>0 ? ( (vols[i]||0)/total*100 ).toFixed(1)+'%' : '0%'; r.querySelector('.mixPct').textContent = pct; }); }
 if (el('calcMix')) el('calcMix').addEventListener('click', ()=> {
   if(!mixBody) return; const rows=[...mixBody.querySelectorAll('tr')]; if(rows.length===0){ if(mixResults) mixResults.innerHTML='<p>No hay depósitos.</p>'; return; }
@@ -88,8 +98,8 @@ if (el('calcMix')) el('calcMix').addEventListener('click', ()=> {
 });
 if (el('exportMixCSV')) el('exportMixCSV').addEventListener('click', ()=> { let csv='Deposito,Porcentaje,Volumen,Grado,pH,Acidez\n'; [...mixBody.querySelectorAll('tr')].forEach(r=>{ csv += [r.querySelector('.mixDep').value, r.querySelector('.mixPct').textContent, r.querySelector('.mixVol').value, r.querySelector('.mixGrad').value, r.querySelector('.mixPh').value, r.querySelector('.mixAci').value].join(',')+'\n'; }); downloadCSV(csv,'mezclas.csv'); });
 if (el('exportMixPDF')) el('exportMixPDF').addEventListener('click', ()=> { const tableHtml = tableToPrintableHTML(document.getElementById('mixTable')); const html = `<h2>Mezcla</h2>${tableHtml}${mixResults.innerHTML}`; openPrint(html); });
-if (el('saveMix')) el('saveMix').addEventListener('click', ()=> { const rows = [...mixBody.querySelectorAll('tr')].map(r=>({ deposito:r.querySelector('.mixDep').value, volumen:r.querySelector('.mixVol').value, grado:r.querySelector('.mixGrad').value, ph:r.querySelector('.mixPh').value, acidez:r.querySelector('.mixAci').value })); const payload = { rows, finalDeposit: el('mixFinalDeposit') ? el('mixFinalDeposit').value : '' }; localStorage.setItem('mixData', JSON.stringify(payload)); alert('Mezcla guardada'); });
-function loadMix(){ const raw = localStorage.getItem('mixData'); if(!raw) return; try{ const obj = JSON.parse(raw); if(!mixBody) return; mixBody.innerHTML = ''; (obj.rows||[]).forEach(r => addMixRow(r.deposito,r.volumen,r.grado,r.ph,r.acidez)); if(obj.finalDeposit && el('mixFinalDeposit')) el('mixFinalDeposit').value = obj.finalDeposit; updateMixTotals(); }catch(e){ console.error(e); } }
+if (el('saveMix')) el('saveMix').addEventListener('click', ()=> { const rows = [...mixBody.querySelectorAll('tr')].map(r=>({ deposito:r.querySelector('.mixDep').value, volumen:r.querySelector('.mixVol').value, grado:r.querySelector('.mixGrad').value, ph:r.querySelector('.mixPh').value, acidez:r.querySelector('.mixAci').value, caracteristicas:r.querySelector('.mixCaract') ? r.querySelector('.mixCaract').value:'' })); const payload = { rows, finalDeposit: el('mixFinalDeposit') ? el('mixFinalDeposit').value : '' }; localStorage.setItem('mixData', JSON.stringify(payload)); alert('Mezcla guardada'); });
+function loadMix(){ const raw = localStorage.getItem('mixData'); if(!raw) return; try{ const obj = JSON.parse(raw); if(!mixBody) return; mixBody.innerHTML = ''; (obj.rows||[]).forEach(r => addMixRow(r.deposito,r.volumen,r.grado,r.ph,r.acidez,r.carasteristicas)); if(obj.finalDeposit && el('mixFinalDeposit')) el('mixFinalDeposit').value = obj.finalDeposit; updateMixTotals(); }catch(e){ console.error(e); } }
 loadMix();
 
 // ---------- MOVIMIENTOS BODEGA (con selección, enviar y deshacer) ----------
@@ -654,23 +664,15 @@ function loadBodega(){
 }
 
 // ----------------------
-// Export CSV y PDF
+// Export PDF
 // ----------------------
-if (el('exportBodegaCSV')) el('exportBodegaCSV').addEventListener('click', ()=>{
-  if(!bBody) return;
-  let csv = 'Deposito,Capacidad,VolumenActual,Grado,pH,Acidez,Vino,Añada,SO2,Caracteristicas\n';
-  [...bBody.querySelectorAll('tr')].forEach((r,i)=>{
-    const vinoVal = r.querySelector('.vino')?.value || '';
-    csv += [i+1, r.querySelector('.cap').value, r.querySelector('.volAct').value, r.querySelector('.grado').value, r.querySelector('.ph').value, r.querySelector('.acid').value, vinoVal, r.querySelector('.añada').value, r.querySelector('.so2').value || 0, `"${r.querySelector('.carac').value||''}"`].join(',')+'\n';
-  });
-  downloadCSV(csv,'bodega.csv');
-});
 
 if (el('exportBodegaPDF')) el('exportBodegaPDF').addEventListener('click', ()=>{
   const tableHtml = tableToPrintableHTML(document.getElementById('bodegaTable'));
   const html = `<h2>Informe Bodega</h2>${tableHtml}${bResults.innerHTML}`;
   openPrint(html);
 });
+
 
 // ----------------------
 // Inicialización
@@ -874,11 +876,67 @@ loadProd();
 
 
 // ---------- UTILITIES: print/export/table builder ----------
-function tableToPrintableHTML(tableEl){ if(!tableEl) return ''; let html = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">'; const ths = tableEl.querySelectorAll('thead th'); if(ths.length){ html += '<thead><tr>'; ths.forEach(th => html += `<th style="background:#dfeff1;">${th.textContent.trim()}</th>`); html += '</tr></thead>'; } html += '<tbody>'; const rows = tableEl.querySelectorAll('tbody tr'); rows.forEach(row => { html += '<tr>'; Array.from(row.children).forEach(cell => { const input = cell.querySelector('input, select, textarea'); let val = ''; if(input){ if(input.tagName.toLowerCase() === 'select'){ val = input.options[input.selectedIndex] ? input.options[input.selectedIndex].text : input.value; } else { val = input.value; } } else { val = cell.textContent.trim(); } val = val === undefined || val === null ? '' : String(val); html += `<td style="vertical-align:top">${val}</td>`; }); html += '</tr>'; }); html += '</tbody></table>'; return html; }
+function tableToPrintableHTML(tableEl) {
+  if (!tableEl) return '';
+
+  let html = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;width:100%">';
+  
+  // Encabezado
+  const ths = tableEl.querySelectorAll('thead th');
+  if (ths.length) {
+    html += '<thead><tr>';
+    ths.forEach(th => {
+      const texto = th.textContent.trim().toLowerCase();
+      if (!texto.includes('acción') && !texto.includes('accion') && !texto.includes('color')) {
+        html += `<th style="background:#dfeff1;">${th.textContent.trim()}</th>`;
+      }
+    });
+    html += '</tr></thead>';
+  }
+
+  // Cuerpo
+  html += '<tbody>';
+  const rows = tableEl.querySelectorAll('tbody tr');
+  rows.forEach(row => {
+    html += '<tr>';
+    Array.from(row.children).forEach(cell => {
+      const headerIndex = Array.from(cell.parentNode.children).indexOf(cell);
+      const headerText = tableEl.querySelector(`thead tr th:nth-child(${headerIndex+1})`)?.textContent.toLowerCase() || '';
+      if (headerText.includes('acción') || headerText.includes('accion') || headerText.includes('color')) return;
+
+      const input = cell.querySelector('input, select, textarea');
+      let val = '';
+      if (input) {
+        if (input.tagName.toLowerCase() === 'select') {
+          const selectedOption = input.options[input.selectedIndex];
+          val = selectedOption ? selectedOption.text : '';
+        } else {
+          val = input.value;
+        }
+      } else {
+        val = cell.textContent.trim();
+      }
+      html += `<td style="vertical-align:top">${val}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  // Solo para barricas: añadir los totales debajo de la tabla
+  if (tableEl.id === 'barrTable') {
+    const totalBarr = barrCount ? barrCount.textContent : '';
+    const totalLit = barrLitros ? barrLitros.textContent : '';
+    if (totalBarr || totalLit) {
+      html += `<div style="margin-top:12px;font-weight:bold;">
+        Total Barricas: ${totalBarr} — Total Litros: ${totalLit} L
+      </div>`;
+    }
+  }
+
+  return html;
+}
 
 function openPrint(html){ const stylesheet = document.querySelector('link[rel="stylesheet"]') ? document.querySelector('link[rel="stylesheet"]').href : null; const w = window.open('','_blank'); w.document.open(); w.document.write(`\n    <html>\n      <head>\n        <title>Informe</title>\n        ${stylesheet?`<link rel="stylesheet" href="${stylesheet}">`:''}\n        <style>body{font-family:Inter, Arial, sans-serif;padding:16px;so2:#111}table{font-size:12px}h2{margin-top:0}</style>\n      </head>\n      <body>${html}</body>\n    </html>\n  `); w.document.close(); setTimeout(()=> w.print(), 500); }
-
-function downloadCSV(text, filename){ const blob = new Blob([text], { type: 'text/csv;charset=utf-8;' }); const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = filename; document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href); }
 
 // ----------------------
 // MAPA: kept as before
