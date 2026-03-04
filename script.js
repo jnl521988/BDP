@@ -62,7 +62,9 @@ let lastMixVolume = 0;
 function makeDepositSelect(){ return [...Array(23)].map((_,i)=>`<option value="${i+1}">${i+1}</option>`).join(''); }
 function addMixRow(dep='', vol='', grad='', ph='', aci='', caract='') {
   if(!mixBody) return;
-
+ if (el('addMixRow')) {
+  el('addMixRow').onclick = () => addMixRow();
+}
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td><select class="mixDep">${makeDepositSelect()}</select></td>
