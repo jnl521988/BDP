@@ -54,17 +54,31 @@ const colorMap = {
   '500':'#36832aff'
 };
 
-// ---------- MIXTURAS ---------- (kept mostly unchanged)
+// ---------- MIXTURAS ----------
 const mixBody = el('mixTableBody');
 const mixTotal = el('mixTotal');
 const mixResults = el('mixResults');
 let lastMixVolume = 0;
-function makeDepositSelect(){ return [...Array(23)].map((_,i)=>`<option value="${i+1}">${i+1}</option>`).join(''); }
-function addMixRow(dep='', vol='', grad='', ph='', aci='', caract='') {
-  if(!mixBody) return;
- if (el('addMixRow')) {
+
+function makeDepositSelect(){
+  let options = [...Array(23)]
+    .map((_,i)=>`<option value="${i+1}">${i+1}</option>`)
+    .join('');
+
+  // 👉 añadir Barricas
+  options += `<option value="barricas">Barricas</option>`;
+
+  return options;
+}
+
+// 🔥 IMPORTANTE: evento SOLO UNA VEZ (evita duplicados)
+if (el('addMixRow')) {
   el('addMixRow').onclick = () => addMixRow();
 }
+
+function addMixRow(dep='', vol='', grad='', ph='', aci='', crianza='', duelas='', caract='') {
+  if(!mixBody) return;
+
   const tr = document.createElement('tr');
   tr.innerHTML = `
     <td><select class="mixDep">${makeDepositSelect()}</select></td>
@@ -73,37 +87,212 @@ function addMixRow(dep='', vol='', grad='', ph='', aci='', caract='') {
     <td><input class="mixGrad" type="number" step="0.01" value="${grad}"></td>
     <td><input class="mixPh" type="number" step="0.01" value="${ph}"></td>
     <td><input class="mixAci" type="number" step="0.01" value="${aci}"></td>
-    <td><input class="mixCaract" type="text" value="${caract || ''}"></td> <!-- nueva columna -->
+    <td><input class="mixCrianza" type="number" step="0.1" value="${crianza}"></td>
+    <td><input class="mixDuelas" type="number" step="0.1" value="${duelas}"></td>
+    <td><input class="mixCaract" type="text" value="${caract || ''}"></td>
     <td><button class="small delMix">Eliminar</button></td>
   `;
-  
+
   mixBody.appendChild(tr);
 
   // Eventos
-  tr.querySelector('.delMix').addEventListener('click', ()=>{ tr.remove(); updateMixTotals(); });
+  tr.querySelector('.delMix').addEventListener('click', ()=>{
+    tr.remove();
+    updateMixTotals();
+  });
+
   tr.querySelector('.mixVol').addEventListener('input', updateMixTotals);
 
   if(dep) tr.querySelector('.mixDep').value = dep;
 }
-function updateMixTotals(){ if(!mixBody) return; const vols=[...mixBody.querySelectorAll('.mixVol')].map(i=>parseFloat(i.value)||0); const total=vols.reduce((a,b)=>a+b,0); if(mixTotal) mixTotal.textContent = total.toFixed(0); lastMixVolume = total; [...mixBody.querySelectorAll('tr')].forEach((r,i)=>{ const pct = total>0 ? ( (vols[i]||0)/total*100 ).toFixed(1)+'%' : '0%'; r.querySelector('.mixPct').textContent = pct; }); }
+
+// ---------- TOTALES ----------
+function updateMixTotals(){
+  if(!mixBody) return;
+
+  const vols=[...mixBody.querySelectorAll('.mixVol')].map(i=>parseFloat(i.value)||0);
+  const total=vols.reduce((a,b)=>a+b,0);
+
+  if(mixTotal) mixTotal.textContent = total.toFixed(0);
+  lastMixVolume = total;
+
+  [...mixBody.querySelectorAll('tr')].forEach((r,i)=>{
+    const pct = total>0 ? ((vols[i]||0)/total*100).toFixed(1)+'%' : '0%';
+    r.querySelector('.mixPct').textContent = pct;
+  });
+}
+
+// ---------- CALCULAR ----------
 if (el('calcMix')) el('calcMix').addEventListener('click', ()=> {
-  if(!mixBody) return; const rows=[...mixBody.querySelectorAll('tr')]; if(rows.length===0){ if(mixResults) mixResults.innerHTML='<p>No hay depósitos.</p>'; return; }
-  let total=0,sumGrad=0,sumAci=0,sumH=0,volH=0; rows.forEach(r=>{ const v=parseFloat(r.querySelector('.mixVol').value)||0; const g=parseFloat(r.querySelector('.mixGrad').value)||0; const a=parseFloat(r.querySelector('.mixAci').value)||0; const pRaw=r.querySelector('.mixPh').value; const p = pRaw===''?null:parseFloat(pRaw); total+=v; sumGrad+=v*g; sumAci+=v*a; if(p!==null){ const H = Math.pow(10,-p); sumH += H*v; volH += v; } }); if(total<=0){ mixResults.innerHTML='<p>Introduce volúmenes válidos.</p>'; return; }
-  const finalGrad = sumGrad/total; const finalAci = sumAci/total; const finalPH = volH>0 ? -Math.log10(sumH/volH) : '—'; mixResults.innerHTML = `
+
+  if(!mixBody) return;
+
+  const rows=[...mixBody.querySelectorAll('tr')];
+  if(rows.length===0){
+    if(mixResults) mixResults.innerHTML='<p>No hay depósitos.</p>';
+    return;
+  }
+
+  let total=0,sumGrad=0,sumAci=0,sumH=0,volH=0;
+
+  // 🔥 NUEVO
+  let sumCrianza = 0;
+  let sumDuelas = 0;
+
+  let litrosCrianza = 0;
+  let litrosDuelas = 0;
+  let litrosJoven = 0;
+
+  rows.forEach(r=>{
+    const v=parseFloat(r.querySelector('.mixVol').value)||0;
+    const g=parseFloat(r.querySelector('.mixGrad').value)||0;
+    const a=parseFloat(r.querySelector('.mixAci').value)||0;
+
+    const pRaw=r.querySelector('.mixPh').value;
+    const p = pRaw===''?null:parseFloat(pRaw);
+
+    const c = parseFloat(r.querySelector('.mixCrianza').value) || 0;
+    const d = parseFloat(r.querySelector('.mixDuelas').value) || 0;
+
+    total+=v;
+    sumGrad+=v*g;
+    sumAci+=v*a;
+
+    if(p!==null){
+      const H = Math.pow(10,-p);
+      sumH += H*v;
+      volH += v;
+    }
+
+    // 🔥 CLASIFICACIÓN
+    if(c > 0){
+      litrosCrianza += v;
+      sumCrianza += v * c;
+    }
+    else if(d > 0){
+      litrosDuelas += v;
+      sumDuelas += v * d;
+    }
+    else{
+      litrosJoven += v;
+    }
+
+  });
+
+  if(total<=0){
+    mixResults.innerHTML='<p>Introduce volúmenes válidos.</p>';
+    return;
+  }
+
+  const finalGrad = sumGrad/total;
+  const finalAci = sumAci/total;
+  const finalPH = volH>0 ? -Math.log10(sumH/volH) : '—';
+
+  // 🔥 MEDIAS CORRECTAS
+  const crianzaMedia = litrosCrianza > 0 ? sumCrianza / litrosCrianza : 0;
+  const duelasMedia = litrosDuelas > 0 ? sumDuelas / litrosDuelas : 0;
+
+  // 🔥 PORCENTAJES CORRECTOS
+  const pctCrianza = (litrosCrianza / total) * 100;
+  const pctDuelas = (litrosDuelas / total) * 100;
+  const pctJoven = (litrosJoven / total) * 100;
+
+  mixResults.innerHTML = `
     <h3>Resultado Mezcla</h3>
     <p><strong>Depósito Final:</strong> ${el('mixFinalDeposit') ? el('mixFinalDeposit').value || '—' : '—'}</p>
     <p><strong>Volumen Total:</strong> ${total.toFixed(0)} L</p>
     <p><strong>Grado:</strong> ${finalGrad.toFixed(2)} %</p>
     <p><strong>pH:</strong> ${finalPH==='—'?'—':finalPH.toFixed(2)}</p>
     <p><strong>Acidez:</strong> ${finalAci.toFixed(2)} g/L</p>
+
+    <hr>
+
+    <p><strong>Crianza Media:</strong> ${crianzaMedia.toFixed(1)} Meses</p>
+    <p><strong>Duelas Media:</strong> ${duelasMedia.toFixed(1)} Meses</p>
+
+    <p><strong>% Crianza:</strong> ${pctCrianza.toFixed(1)} %</p>
+    <p><strong>% Duelas:</strong> ${pctDuelas.toFixed(1)} %</p>
+    <p><strong>% Joven:</strong> ${pctJoven.toFixed(1)} %</p>
   `;
 });
-if (el('exportMixCSV')) el('exportMixCSV').addEventListener('click', ()=> { let csv='Deposito,Porcentaje,Volumen,Grado,pH,Acidez\n'; [...mixBody.querySelectorAll('tr')].forEach(r=>{ csv += [r.querySelector('.mixDep').value, r.querySelector('.mixPct').textContent, r.querySelector('.mixVol').value, r.querySelector('.mixGrad').value, r.querySelector('.mixPh').value, r.querySelector('.mixAci').value].join(',')+'\n'; }); downloadCSV(csv,'mezclas.csv'); });
-if (el('exportMixPDF')) el('exportMixPDF').addEventListener('click', ()=> { const tableHtml = tableToPrintableHTML(document.getElementById('mixTable')); const html = `<h2>Mezcla</h2>${tableHtml}${mixResults.innerHTML}`; openPrint(html); });
-if (el('saveMix')) el('saveMix').addEventListener('click', ()=> { const rows = [...mixBody.querySelectorAll('tr')].map(r=>({ deposito:r.querySelector('.mixDep').value, volumen:r.querySelector('.mixVol').value, grado:r.querySelector('.mixGrad').value, ph:r.querySelector('.mixPh').value, acidez:r.querySelector('.mixAci').value, caracteristicas:r.querySelector('.mixCaract') ? r.querySelector('.mixCaract').value:'' })); const payload = { rows, finalDeposit: el('mixFinalDeposit') ? el('mixFinalDeposit').value : '' }; localStorage.setItem('mixData', JSON.stringify(payload)); alert('Mezcla guardada'); });
-function loadMix(){ const raw = localStorage.getItem('mixData'); if(!raw) return; try{ const obj = JSON.parse(raw); if(!mixBody) return; mixBody.innerHTML = ''; (obj.rows||[]).forEach(r => addMixRow(r.deposito,r.volumen,r.grado,r.ph,r.acidez,r.caracteristicas)); if(obj.finalDeposit && el('mixFinalDeposit')) el('mixFinalDeposit').value = obj.finalDeposit; updateMixTotals(); }catch(e){ console.error(e); } }
-loadMix();
 
+// ---------- EXPORTAR / GUARDAR (igual que tenías) ----------
+if (el('exportMixCSV')) el('exportMixCSV').addEventListener('click', ()=>{
+  let csv='Deposito,Porcentaje,Volumen,Grado,pH,Acidez\n';
+  [...mixBody.querySelectorAll('tr')].forEach(r=>{
+    csv += [
+      r.querySelector('.mixDep').value,
+      r.querySelector('.mixPct').textContent,
+      r.querySelector('.mixVol').value,
+      r.querySelector('.mixGrad').value,
+      r.querySelector('.mixPh').value,
+      r.querySelector('.mixAci').value
+    ].join(',')+'\n';
+  });
+  downloadCSV(csv,'mezclas.csv');
+});
+
+if (el('exportMixPDF')) el('exportMixPDF').addEventListener('click', ()=>{
+  const tableHtml = tableToPrintableHTML(document.getElementById('mixTable'));
+  const html = `<h2>Mezcla</h2>${tableHtml}${mixResults.innerHTML}`;
+  openPrint(html);
+});
+
+if (el('saveMix')) el('saveMix').addEventListener('click', ()=>{
+  const rows = [...mixBody.querySelectorAll('tr')].map(r=>({
+    deposito:r.querySelector('.mixDep').value,
+    volumen:r.querySelector('.mixVol').value,
+    grado:r.querySelector('.mixGrad').value,
+    ph:r.querySelector('.mixPh').value,
+    acidez:r.querySelector('.mixAci').value,
+    crianza:r.querySelector('.mixCrianza')?.value || '',
+    duelas:r.querySelector('.mixDuelas')?.value || '',
+    caracteristicas:r.querySelector('.mixCaract')?.value || ''
+  }));
+
+  const payload = {
+    rows,
+    finalDeposit: el('mixFinalDeposit') ? el('mixFinalDeposit').value : ''
+  };
+
+  localStorage.setItem('mixData', JSON.stringify(payload));
+  alert('Mezcla guardada');
+});
+
+function loadMix(){
+  const raw = localStorage.getItem('mixData');
+  if(!raw) return;
+
+  try{
+    const obj = JSON.parse(raw);
+    if(!mixBody) return;
+
+    mixBody.innerHTML = '';
+
+    (obj.rows||[]).forEach(r =>
+      addMixRow(
+        r.deposito,
+        r.volumen,
+        r.grado,
+        r.ph,
+        r.acidez,
+        r.crianza,
+        r.duelas,
+        r.caracteristicas
+      )
+    );
+
+    if(obj.finalDeposit && el('mixFinalDeposit'))
+      el('mixFinalDeposit').value = obj.finalDeposit;
+
+    updateMixTotals();
+
+  }catch(e){
+    console.error(e);
+  }
+}
+
+loadMix();
 // ---------- MOVIMIENTOS BODEGA (con selección, enviar y deshacer) ----------
 const movBody = el('movTableBody');
 const movCount = el('movCount');
