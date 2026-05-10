@@ -886,7 +886,8 @@ function addBarrRow(count = 1, type = 225, anyada = 2022, fecha = '', color = ''
 
   const tr = document.createElement('tr');
   tr.innerHTML = `
-    <td><input class="b_count" type="number" min="1" value="${count}"></td>
+    <td><input type="checkbox" class="b_check"></td>
+  <td><input class="b_count" type="number" min="1" value="${count}"></td>
     <td>
       <select class="b_type">
         <option value="225">225</option>
@@ -979,8 +980,10 @@ function updateBarrTotals() {
   if (barrLitros) barrLitros.textContent = totalLit.toFixed(0);
 }
 
-barrBody && barrBody.addEventListener('input', updateBarrTotals);
-updateBarrTotals();
+barrBody && barrBody.addEventListener('input', () => {
+  updateBarrTotals();
+  updateBarrYearTotals();
+});
 
 // ---------- GUARDAR ----------
 if (el('saveBarr')) {
@@ -993,12 +996,14 @@ if (el('saveBarr')) {
       anyada: r.querySelector('.b_anyada').value,
       fecha: r.querySelector('.b_fecha').value,
       color: r.querySelector('.b_color').value,
-      carac: r.querySelector('.carac').value
+      carac: r.querySelector('.carac').value,
+      vaciar: r.classList.contains('vaciar-pendiente')
     }));
 
     localStorage.setItem('barrData', JSON.stringify(rows));
     alert('Barricas guardadas correctamente');
   });
+  
 }
 
 // ---------- CARGAR ----------
@@ -1009,16 +1014,22 @@ function loadBarr() {
   try {
     const rows = JSON.parse(raw);
     barrBody.innerHTML = '';
-    rows.forEach(r =>
-      addBarrRow(
-        r.count || 1,
-        r.type || 225,
-        r.anyada || 2022,
-        r.fecha || '',
-        r.color || '',
-        r.carac || ''
-      )
-    );
+    rows.forEach(r => {
+  addBarrRow(
+    r.count || 1,
+    r.type || 225,
+    r.anyada || 2022,
+    r.fecha || '',
+    r.color || '',
+    r.carac || ''
+  );
+
+  const lastRow = barrBody.lastElementChild;
+
+  if (r.vaciar) {
+    lastRow.classList.add('vaciar-pendiente');
+  }
+});
     updateBarrTotals();
   } catch (e) {
     console.error(e);
@@ -1039,7 +1050,84 @@ if (el('exportBarrPDF')) {
   });
 }
 
+
 loadBarr();
+updateBarrYearTotals();
+
+if (el('vaciarBarricas')) {
+  el('vaciarBarricas').addEventListener('click', () => {
+
+    const rows = [...barrBody.querySelectorAll('tr')];
+
+    rows.forEach(row => {
+      const check = row.querySelector('.b_check');
+
+      if (check && check.checked) {
+        row.classList.add('vaciar-pendiente');
+      }
+    });
+
+    updateBarrYearTotals(); // actualizar litros pendientes
+  });
+}
+if (el('quitarVaciarBarricas')) {
+  el('quitarVaciarBarricas').addEventListener('click', () => {
+
+    const rows = [...barrBody.querySelectorAll('tr')];
+
+    rows.forEach(row => {
+      const check = row.querySelector('.b_check');
+
+      if (check && check.checked) {
+        row.classList.remove('vaciar-pendiente');
+      }
+    });
+
+    updateBarrYearTotals();
+  });
+}
+function updateBarrYearTotals() {
+  if (!barrBody) return;
+
+  let litrosPorAnio = {};
+  let litrosPendientes = 0;
+
+  [...barrBody.querySelectorAll('tr')].forEach(r => {
+    const cnt = parseFloat(r.querySelector('.b_count')?.value) || 0;
+    const cap = parseFloat(r.querySelector('.b_type')?.value) || 0;
+    const litros = cnt * cap;
+
+    const anyada = r.querySelector('.b_anyada')?.value || '—';
+
+    // 👉 sumar por añada
+    if (!litrosPorAnio[anyada]) litrosPorAnio[anyada] = 0;
+    litrosPorAnio[anyada] += litros;
+
+    // 👉 sumar pendientes (amarillo)
+    if (r.classList.contains('vaciar-pendiente')) {
+      litrosPendientes += litros;
+    }
+  });
+
+  // ---- MOSTRAR POR AÑADA ----
+  const yearDiv = el('barrYearTotals');
+  if (yearDiv) {
+    let texto = '<strong>LITROS POR AÑADA:</strong> ';
+
+    texto += Object.entries(litrosPorAnio)
+      .map(([anio, litros]) => `${anio}: ${litros.toFixed(0)} L`)
+      .join(' / ');
+
+    yearDiv.innerHTML = texto;
+  }
+
+  // ---- MOSTRAR PENDIENTES ----
+  const pendingDiv = el('barrPendingTotal');
+  if (pendingDiv) {
+  pendingDiv.innerHTML = `<strong>Pendiente de Vaciar:</strong> ${litrosPendientes ? litrosPendientes.toFixed(0) : 0} L`;
+}
+  
+}
 
 
 // ---------- SO2 ----------

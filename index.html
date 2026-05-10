@@ -194,13 +194,17 @@
 
   <div class="card">
     <div class="controls">
-      <button id="addBarrRow" class="small">Añadir Fila</button>
-      <div class="inline-info">Total Barricas: <strong><span id="barrCount">0</span></strong> — Total Litros: <strong><span id="barrLitros">0</span> L</strong></div>
+      <button id="addBarrRow" class="small">Añadir Fila</button> 
+      <button id="vaciarBarricas" class="small">Pendiente Vaciar</button> <button id="quitarVaciarBarricas" class="small">Quitar Vaciado</button>
+      <div class="inline-info">TOTAL BARRICAS: <strong><span id="barrCount">0</span></strong> / TOTAL LITROS: <strong><span id="barrLitros">0</span> L</strong></div>
+      <div id="barrYearTotals"></div>
+      <div id="barrPendingTotal"></div>
     </div>
 
     <table class="table" id="barrTable">
       <thead class="thead-green">
         <tr>
+          <th></th>
           <th>Barricas</th>
           <th>CAPACIDAD <br>(L<span style="text-transform:lowercase;">itros</span>)</th>
           <th>Litros <br> Barricas</th>
