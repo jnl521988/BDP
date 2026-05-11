@@ -1037,12 +1037,74 @@ function loadBarr() {
 }
 if (el('exportBarrPDF')) {
   el('exportBarrPDF').addEventListener('click', () => {
-    const table = document.getElementById('barrTable');
-    if (!table) return;
 
-    const tableHtml = tableToPrintableHTML(table);
+    if (!barrBody) return;
+
+    // ===== 1. CONSTRUIR TABLA LIMPIA PARA PDF =====
+    let rowsHtml = '';
+
+    [...barrBody.querySelectorAll('tr')].forEach(r => {
+
+      const count = r.querySelector('.b_count')?.value || '';
+      const type = r.querySelector('.b_type');
+      const anyada = r.querySelector('.b_anyada');
+      const fecha = r.querySelector('.b_fecha')?.value || '';
+      const carac = r.querySelector('.carac')?.value || '';
+      const color = r.querySelector('.b_color');
+
+      const litros = (parseFloat(count) || 0) * (parseFloat(type?.value) || 0);
+
+      rowsHtml += `
+        <tr>
+          <td>${count}</td>
+          <td>${type?.value || ''}</td>
+          <td>${litros.toFixed(0)}</td>
+          <td>${anyada?.value || ''}</td>
+          <td>${fecha}</td>
+          <td>${carac}</td>
+          <td>${color?.value || ''}</td>
+        </tr>
+      `;
+    });
+
+    const tableHtml = `
+      <table border="1" style="width:100%; border-collapse:collapse; text-align:center;">
+        <thead>
+          <tr>
+            <th>BARRICAS</th>
+            <th>CAPACIDAD</th>
+            <th>LITROS</th>
+            <th>AÑADA</th>
+            <th>FECHA</th>
+            <th>CARACTERÍSTICAS</th>
+            <th>TIPO VINO</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHtml}
+        </tbody>
+      </table>
+    `;
+
+    // ===== 2. TOTALES =====
+    const totalBarricas = barrCount?.textContent || '0';
+    const totalLitros = barrLitros?.textContent || '0';
+
+    const yearTotals = el('barrYearTotals')?.innerHTML || '';
+    const pendingTotals = el('barrPendingTotal')?.innerHTML || '';
+
+    // ===== 3. HTML FINAL =====
     const html = `
       <h2>Barricas</h2>
+
+      <p><strong>TOTAL BARRICAS:</strong> ${totalBarricas}</p>
+      <p><strong>TOTAL LITROS:</strong> ${totalLitros} L</p>
+
+      <div>${yearTotals}</div>
+      <div>${pendingTotals}</div>
+
+      <br>
+
       ${tableHtml}
     `;
 
