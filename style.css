@@ -111,11 +111,25 @@ input[type="number"],input[type="text"],select{width:100%;padding:10px;border-ra
 .pallet-AB{ background:#2e8b57; }   /* AB1-2 */
 .pallet-PL{ background:#6b7280; }   /* PL1-2 */
 .pallet-DV{ background:#1c9026; }
+.pallet-divina{
+  border-radius:50%;
+}
+.divina-cell{
+  border-radius:50% !important;
+}
 .pallet-LQ{ background:#6b2b8f; }
 .pallet-RS{ background:#ff69b4; }
 .pallet-EP{ background:#d6d31f; }
 .pallet-300{ background:#D6B34A; color:#111; }
 .pallet-500{ background:#101112; }
+
+.sala-cell .count{
+  width:100%;
+  height:100%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
 
 /* ---------- GRID ---------- */
 .sala-grid-wrap{

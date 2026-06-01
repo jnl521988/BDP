@@ -684,7 +684,7 @@ const bResults = el('bodegaResults');
 
 // Lista de años para el select de añada
 function makeAnyadaSelect(){
-  return [0,2022,2023,2024,2025,2026,2027,2028,2029,2030]
+  return [0,2022,2023,2024,2025,2026,2027,2028,2029,2030,2031,2032,2033,2034]
     .map(y=>`<option value="${y}">${y}</option>`).join('');
 }
 
@@ -893,13 +893,13 @@ function addBarrRow(count = 1, type = 225, anyada = 2022, fecha = '', color = ''
         <option value="225">225</option>
         <option value="300">300</option>
         <option value="500">500</option>
-        <option value="2000">2000</option>
+        <option value="1900">1900</option>
       </select>
     </td>
     <td class="b_total">0</td>
     <td>
       <select class="b_anyada">
-        ${[2022,2023,2024,2025,2026,2027,2028,2029,2030]
+        ${[2022,2023,2024,2025,2026,2027,2028,2029,2030,2031,2032,2033,2034]
           .map(y => `<option value="${y}">${y}</option>`).join('')}
       </select>
     </td>
@@ -1312,7 +1312,13 @@ const paletteItems = [
   {name:'300',label:'300'},{name:'500',label:'500'}
 ];
 
-function renderPalette(){ if(!paletteEl) return; paletteEl.innerHTML=''; paletteItems.forEach(it=>{ const d=document.createElement('div'); d.className='pallet-item'; d.draggable=true; d.dataset.name=it.name; d.textContent=it.label; d.style.background = colorMap[it.name] || '#999'; d.addEventListener('dragstart', (e)=>{ e.dataTransfer.setData('text/plain', it.name); }); paletteEl.appendChild(d); }); }
+function renderPalette(){ if(!paletteEl) return; paletteEl.innerHTML=''; paletteItems.forEach(it=>{ const d = document.createElement('div');
+
+if (it.name.startsWith('DIVINA')) {
+  d.className = 'pallet-item pallet-divina';
+} else {
+  d.className = 'pallet-item';
+} d.draggable=true; d.dataset.name=it.name; d.textContent=it.label; d.style.background = colorMap[it.name] || '#999'; d.addEventListener('dragstart', (e)=>{ e.dataTransfer.setData('text/plain', it.name); }); paletteEl.appendChild(d); }); }
 renderPalette();
 
 // Sala storage structure: object { sala1: {...cells...}, sala2:..., sala3:... }
@@ -1352,9 +1358,43 @@ function onCellDrop(e){
 let selectedCell = null;
 function selectCell(cell){ if(selectedCell) selectedCell.classList.remove('selected'); selectedCell = cell; selectedCell.classList.add('selected'); }
 
-function renderSalaCell(cell, state){ if(!state){ cell.classList.add('empty'); cell.style.background=''; cell.querySelector('.count').textContent='0'; cell.querySelector('.cell-label').textContent=''; return; } cell.classList.remove('empty'); const col = colorMap[state.colorName] || '#999'; cell.style.background = col; cell.querySelector('.count').textContent = state.count; cell.querySelector('.cell-label').textContent = state.colorName;
-}
+function renderSalaCell(cell, state){
 
+  const count = cell.querySelector('.count');
+  const label = cell.querySelector('.cell-label');
+
+  if(!state){
+    cell.classList.add('empty');
+    cell.style.background = '';
+
+    count.textContent = '0';
+    count.style.background = '';
+    count.style.borderRadius = '6px';
+
+    label.textContent = '';
+    return;
+  }
+
+  cell.classList.remove('empty');
+
+  const col = colorMap[state.colorName] || '#999';
+
+  // La celda siempre igual
+  cell.style.background = '';
+
+  // El color va en el bloque interior
+  count.style.background = col;
+  count.textContent = state.count;
+
+  label.textContent = state.colorName;
+
+  // DIVINA redonda
+  if(state.colorName.startsWith('DIVINA')){
+    count.style.borderRadius = '50%';
+  }else{
+    count.style.borderRadius = '6px';
+  }
+}
 function renderSala(){ salaNumberLabel.textContent = currentSala; const key = `sala${currentSala}`; const state = salaState[key] || {}; const cells=[...salaGrid.querySelectorAll('.sala-cell')]; cells.forEach(cell=>{ const idx = cell.dataset.idx; const st = state[idx]; if(st) renderSalaCell(cell, st); else renderSalaCell(cell, null); }); }
 
 function saveSalaState(){ localStorage.setItem('salaState', JSON.stringify(salaState)); }
